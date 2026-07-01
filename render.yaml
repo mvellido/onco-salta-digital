@@ -4,12 +4,13 @@ services:
     env: node
     region: oregon
     plan: free
+    root: apps/api
     buildCommand: npm install
     startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: SUPABASE_URL
-        sync: false
+        value: "<YOUR_SUPABASE_URL>"
       - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
+        value: "<YOUR_SUPABASE_SERVICE_ROLE_KEY>"

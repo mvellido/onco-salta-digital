@@ -1,0 +1,20 @@
+# Ignore node_modules and build artifacts for Docker builds
+node_modules/
+dist/
+build/
+
+# Ignore local env files
+.env
+.env.*
+
+# Ignore git metadata
+.git
+
+# Ignore logs
+*.log
+
+# Ignore caches
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

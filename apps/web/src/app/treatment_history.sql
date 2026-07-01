@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- 1) Crear la tabla treatment_history
 CREATE TABLE IF NOT EXISTS treatment_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

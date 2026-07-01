@@ -1,0 +1,17 @@
+# Ignore build and dependency folders
+node_modules/
+dist/
+build/
+
+# Ignore local env files
+.env
+.env.*
+
+# Ignore coverage and cache
+coverage/
+.vite/
+
+# Ignore generated files
+*.log
+.DS_Store
+Thumbs.db

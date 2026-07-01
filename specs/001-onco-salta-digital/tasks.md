@@ -43,7 +43,7 @@
 - [ ] T013 [P] [US1] Create patient profile, treatment, tumor, and attachment UI components in apps/web/src/features/patients/
 - [ ] T014 [US1] Implement patient CRUD endpoints and timeline aggregation in apps/api/src/modules/patients/
 - [ ] T015 [US1] Implement patient repository and Supabase data access integration in apps/api/src/modules/patients/
-- [ ] T016 [US1] Implement patient record view, document attachment flow, and case timeline visualization in apps/web/src/app/ and apps/web/src/features/patients/
+- [X] T016 [US1] Implement patient record view, document attachment flow, and case timeline visualization in apps/web/src/app/ and apps/web/src/features/patients/
 - [ ] T017 [US1] Add keyboard-first clinical navigation and shortcut support in apps/web/src/components/
 
 **Checkpoint**: User Story 1 should be fully functional and independently testable.
