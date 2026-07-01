@@ -196,6 +196,9 @@ function Dashboard({ user, onSignOut }) {
     if (fetchError) {
       setPatients([]);
       setMessage({ type: 'error', text: fetchError.message || 'No se pudieron listar los pacientes.' });
+      if (fetchError.status === 401 || fetchError.code === 'PGRST301') {
+        supabase.auth.signOut();
+      }
     } else {
       setPatients(data || []);
       if (successMessage) {
@@ -263,6 +266,9 @@ function Dashboard({ user, onSignOut }) {
     if (insertError) {
       setMessage({ type: 'error', text: insertError.message || 'No se pudo crear el paciente.' });
       setSavingPatient(false);
+      if (insertError.status === 401 || insertError.code === 'PGRST301') {
+        supabase.auth.signOut();
+      }
       return;
     }
 
@@ -293,6 +299,9 @@ function Dashboard({ user, onSignOut }) {
 
     if (deleteError) {
       setMessage({ type: 'error', text: deleteError.message || 'No se pudo eliminar el paciente.' });
+      if (deleteError.status === 401 || deleteError.code === 'PGRST301') {
+        supabase.auth.signOut();
+      }
       return;
     }
 
@@ -527,25 +536,30 @@ function App() {
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-    // Registrar el listener PRIMERO antes de cargar la sesión
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setAuthReady(true);
-    });
+    let authListener = null;
 
-    // Cargar la sesión actual
-    const loadSession = async () => {
+    const initAuth = async () => {
       try {
+        // 1. Obtener la sesión inicial de forma secuencial
         const { data: { session } } = await supabase.auth.getSession();
         setUser(session?.user ?? null);
-        setAuthReady(true);
       } catch (error) {
-        console.error('Error al cargar sesión:', error);
+        console.error('Error al obtener sesión inicial:', error);
+      } finally {
         setAuthReady(true);
       }
+
+      // 2. Registrar el listener solo después de haber resuelto la sesión inicial.
+      // Esto evita que getSession y onAuthStateChange realicen peticiones
+      // concurrentes de refresco de token, previniendo el error 400.
+      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+        setUser(session?.user ?? null);
+        setAuthReady(true);
+      });
+      authListener = data;
     };
 
-    loadSession();
+    initAuth();
 
     // Limpiar el listener al desmontar
     return () => {
