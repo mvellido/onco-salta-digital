@@ -31,6 +31,111 @@ function getAuthErrorMessage(error, isSignUp = false) {
   return 'No se pudo iniciar sesión. Verifica que Supabase Auth esté habilitado con Email/Password y que las credenciales sean correctas.';
 }
 
+const getVitalsAlerts = (vitals) => {
+  const alerts = {};
+
+  // Presión Arterial
+  if (vitals.systolic || vitals.diastolic) {
+    const sys = vitals.systolic ? parseInt(vitals.systolic, 10) : null;
+    const dia = vitals.diastolic ? parseInt(vitals.diastolic, 10) : null;
+
+    if (sys >= 140 || dia >= 90) {
+      alerts.bp = { type: 'danger', message: 'Alerta: Hipertensión' };
+    } else if ((sys >= 120 && sys < 140) || (dia >= 80 && dia < 90)) {
+      alerts.bp = { type: 'warning', message: 'Atención: Prehipertensión' };
+    } else if ((sys !== null && sys < 90) || (dia !== null && dia < 60)) {
+      alerts.bp = { type: 'danger', message: 'Alerta: Hipotensión' };
+    } else {
+      alerts.bp = { type: 'success', message: 'Normal' };
+    }
+  }
+
+  // Frecuencia Cardíaca
+  if (vitals.heartRate) {
+    const hr = parseInt(vitals.heartRate, 10);
+    if (hr > 100) {
+      alerts.hr = { type: 'danger', message: 'Alerta: Taquicardia (>100 lpm)' };
+    } else if (hr < 60) {
+      alerts.hr = { type: 'danger', message: 'Alerta: Bradicardia (<60 lpm)' };
+    } else {
+      alerts.hr = { type: 'success', message: 'Normal' };
+    }
+  }
+
+  // Temperatura
+  if (vitals.temperature) {
+    const temp = parseFloat(vitals.temperature);
+    if (temp >= 38.0) {
+      alerts.temp = { type: 'danger', message: 'Alerta: Fiebre (>=38.0°C)' };
+    } else if (temp >= 37.3) {
+      alerts.temp = { type: 'warning', message: 'Atención: Febrícula (37.3 - 37.9°C)' };
+    } else if (temp < 35.0) {
+      alerts.temp = { type: 'danger', message: 'Alerta: Hipotermia (<35.0°C)' };
+    } else {
+      alerts.temp = { type: 'success', message: 'Normal' };
+    }
+  }
+
+  // Saturación de Oxígeno
+  if (vitals.oxygenSaturation) {
+    const o2 = parseInt(vitals.oxygenSaturation, 10);
+    if (o2 < 90) {
+      alerts.o2 = { type: 'danger', message: 'Alerta: Hipoxia Severa (<90%)' };
+    } else if (o2 < 95) {
+      alerts.o2 = { type: 'warning', message: 'Atención: Hipoxia Leve (90-94%)' };
+    } else if (o2 > 100) {
+      alerts.o2 = { type: 'danger', message: 'Valor inválido (>100%)' };
+    } else {
+      alerts.o2 = { type: 'success', message: 'Normal' };
+    }
+  }
+
+  return alerts;
+};
+
+const getAlertStyle = (type) => {
+  if (type === 'danger') {
+    return {
+      background: '#fef2f2',
+      color: '#b91c1c',
+      border: '1px solid #fecaca',
+      padding: '4px 8px',
+      borderRadius: '6px',
+      fontSize: '12px',
+      display: 'inline-block',
+      marginTop: '4px',
+      fontWeight: 'bold',
+    };
+  }
+  if (type === 'warning') {
+    return {
+      background: '#fffbeb',
+      color: '#d97706',
+      border: '1px solid #fef3c7',
+      padding: '4px 8px',
+      borderRadius: '6px',
+      fontSize: '12px',
+      display: 'inline-block',
+      marginTop: '4px',
+      fontWeight: 'bold',
+    };
+  }
+  if (type === 'success') {
+    return {
+      background: '#f0fdf4',
+      color: '#166534',
+      border: '1px solid #bbf7d0',
+      padding: '4px 8px',
+      borderRadius: '6px',
+      fontSize: '12px',
+      display: 'inline-block',
+      marginTop: '4px',
+      fontWeight: 'bold',
+    };
+  }
+  return {};
+};
+
 function AuthPage({ onSignIn }) {
   const navigate = useNavigate();
   const [isSignUp, setIsSignUp] = useState(false);
@@ -68,7 +173,6 @@ function AuthPage({ onSignIn }) {
 
       if (data.session) {
         onSignIn?.(data.session);
-        // Esperar un microtask para que React actualice el estado
         await Promise.resolve();
         navigate('/');
       } else {
@@ -84,7 +188,6 @@ function AuthPage({ onSignIn }) {
       }
 
       onSignIn?.(data.session);
-      // Esperar un microtask para que React actualice el estado
       await Promise.resolve();
       navigate('/');
     }
@@ -179,7 +282,26 @@ function Dashboard({ user, onSignOut }) {
     contact: '',
   });
 
+  // Estado del formulario de signos vitales
+  const [vitalsForm, setVitalsForm] = useState({
+    patientId: '',
+    systolic: '',
+    diastolic: '',
+    heartRate: '',
+    temperature: '',
+    weight: '',
+    height: '',
+    oxygenSaturation: '',
+  });
+  const [savingVitals, setSavingVitals] = useState(false);
+  const [vitalsMessage, setVitalsMessage] = useState({ type: '', text: '' });
+  const [latestVitals, setLatestVitals] = useState([]);
+  const [loadingVitalsHistory, setLoadingVitalsHistory] = useState(false);
+
   const formIsValid = useMemo(() => formData.full_name.trim().length > 0, [formData.full_name]);
+
+  // Alertas visuales dinámicas basadas en los inputs actuales
+  const alerts = useMemo(() => getVitalsAlerts(vitalsForm), [vitalsForm]);
 
   const loadPatients = useCallback(async (showLoading = true, successMessage = '') => {
     if (showLoading) {
@@ -209,9 +331,55 @@ function Dashboard({ user, onSignOut }) {
     setLoadingPatients(false);
   }, []);
 
+  // Carga historial de signos vitales para el paciente seleccionado
+  const loadLatestVitals = useCallback(async (patientId) => {
+    if (!patientId) {
+      setLatestVitals([]);
+      return;
+    }
+    setLoadingVitalsHistory(true);
+
+    try {
+      let query = supabase.from('vital_signs').select('*');
+      const hasEq = typeof query.eq === 'function';
+      if (hasEq) {
+        query = query.eq('patient_id', patientId);
+      }
+      let finalQuery = query.order('recorded_at', { ascending: false });
+      const hasLimit = typeof finalQuery.limit === 'function';
+      if (hasLimit) {
+        finalQuery = finalQuery.limit(5);
+      }
+
+      const { data, error } = await finalQuery;
+
+      if (error) {
+        console.error('Error al cargar historial de signos vitales:', error);
+      } else {
+        let filteredData = data || [];
+        if (!hasEq && data) {
+          filteredData = data.filter((item) => item.patient_id === patientId);
+        }
+        if (!hasLimit && filteredData.length > 5) {
+          filteredData = filteredData.slice(0, 5);
+        }
+        setLatestVitals(filteredData);
+      }
+    } catch (err) {
+      console.error('Error inesperado cargando signos vitales:', err);
+    } finally {
+      setLoadingVitalsHistory(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadPatients();
   }, [loadPatients]);
+
+  // Carga automática al cambiar de paciente en el formulario
+  useEffect(() => {
+    loadLatestVitals(vitalsForm.patientId);
+  }, [vitalsForm.patientId, loadLatestVitals]);
 
   useEffect(() => {
     const handleGlobalKeyDown = (event) => {
@@ -250,12 +418,10 @@ function Dashboard({ user, onSignOut }) {
           diagnosis_summary: formData.diagnosis_summary,
           status: formData.status,
           assigned_doctor_id: user?.id,
-          // Nuevas columnas de Supabase
           dni: formData.dni || null,
           birth_date: formData.birth_date || null,
           gender: formData.gender || null,
           contact: formData.contact || null,
-          // Campos heredados/compatibilidad
           document_number: formData.dni || null,
           date_of_birth: formData.birth_date || null,
           sex: formData.gender || 'No especificado',
@@ -307,6 +473,79 @@ function Dashboard({ user, onSignOut }) {
 
     setPatients((current) => current.filter((item) => item.id !== patient.id));
     setMessage({ type: 'success', text: `Paciente eliminado: ${patient.full_name}` });
+  };
+
+  // Abre el panel y selecciona al paciente haciendo scroll suave al contenedor
+  const handleOpenVitals = (patient) => {
+    setVitalsForm((prev) => ({
+      ...prev,
+      patientId: patient.id,
+    }));
+    setVitalsOpen(true);
+    setTimeout(() => {
+      const element = document.getElementById('vitals-section');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 50);
+  };
+
+  const handleSaveVitals = async (event) => {
+    event.preventDefault();
+    setVitalsMessage({ type: '', text: '' });
+
+    if (!vitalsForm.patientId) {
+      setVitalsMessage({ type: 'error', text: 'El paciente es obligatorio.' });
+      return;
+    }
+
+    setSavingVitals(true);
+
+    const systolicVal = vitalsForm.systolic ? parseInt(vitalsForm.systolic, 10) : null;
+    const diastolicVal = vitalsForm.diastolic ? parseInt(vitalsForm.diastolic, 10) : null;
+    const heartRateVal = vitalsForm.heartRate ? parseInt(vitalsForm.heartRate, 10) : null;
+    const temperatureVal = vitalsForm.temperature ? parseFloat(vitalsForm.temperature) : null;
+    const weightVal = vitalsForm.weight ? parseFloat(vitalsForm.weight) : null;
+    const heightVal = vitalsForm.height ? parseFloat(vitalsForm.height) : null;
+    const oxygenSaturationVal = vitalsForm.oxygenSaturation ? parseInt(vitalsForm.oxygenSaturation, 10) : null;
+
+    const { error: insertError } = await supabase
+      .from('vital_signs')
+      .insert([
+        {
+          patient_id: vitalsForm.patientId,
+          blood_pressure_systolic: systolicVal,
+          blood_pressure_diastolic: diastolicVal,
+          heart_rate: heartRateVal,
+          temperature: temperatureVal,
+          weight: weightVal,
+          height: heightVal,
+          oxygen_saturation: oxygenSaturationVal,
+        },
+      ]);
+
+    if (insertError) {
+      setVitalsMessage({ type: 'error', text: insertError.message || 'No se pudieron registrar los signos vitales.' });
+      if (insertError.status === 401 || insertError.code === 'PGRST301') {
+        supabase.auth.signOut();
+      }
+    } else {
+      setVitalsMessage({ type: 'success', text: 'Signos vitales registrados correctamente.' });
+      // Limpia campos del formulario conservando el paciente para ver el historial
+      setVitalsForm((prev) => ({
+        ...prev,
+        systolic: '',
+        diastolic: '',
+        heartRate: '',
+        temperature: '',
+        weight: '',
+        height: '',
+        oxygenSaturation: '',
+      }));
+      loadLatestVitals(vitalsForm.patientId);
+    }
+
+    setSavingVitals(false);
   };
 
   const statusLabel = (status) => ({
@@ -475,9 +714,312 @@ function Dashboard({ user, onSignOut }) {
           </button>
 
           {vitalsOpen ? (
-            <div style={{ marginBottom: 16, padding: 14, borderRadius: 12, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-              <strong>Signos vitales</strong>
-              <p style={{ margin: '6px 0 0', color: '#475569' }}>Sección rápida para observaciones clínicas del paciente en consulta.</p>
+            <div id="vitals-section" style={{ marginBottom: 24, padding: 24, borderRadius: 16, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 18, color: '#0f172a' }}>Registro y Monitoreo de Signos Vitales</h3>
+                  <p style={{ margin: '4px 0 0', color: '#475569', fontSize: 14 }}>Registrá y visualizá los signos vitales del paciente seleccionado.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setVitalsOpen(false)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 8,
+                    border: '1px solid #cbd5e1',
+                    background: '#fff',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    color: '#64748b'
+                  }}
+                >
+                  Ocultar panel
+                </button>
+              </div>
+
+              {vitalsMessage.text ? (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  style={{
+                    marginBottom: 16,
+                    padding: '12px 14px',
+                    borderRadius: 10,
+                    border: vitalsMessage.type === 'success' ? '1px solid #86efac' : '1px solid #fda4af',
+                    background: vitalsMessage.type === 'success' ? '#f0fdf4' : '#fef2f2',
+                    color: vitalsMessage.type === 'success' ? '#166534' : '#b91c1c',
+                    fontSize: 14,
+                  }}
+                >
+                  {vitalsMessage.text}
+                </div>
+              ) : null}
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
+                {/* Formulario */}
+                <form onSubmit={handleSaveVitals} style={{ display: 'grid', gap: 14 }}>
+                  <label style={{ display: 'grid', gap: 6, fontWeight: 600, fontSize: 14 }}>
+                    Paciente <span style={{ color: '#b91c1c' }}>*</span>
+                    <select
+                      value={vitalsForm.patientId}
+                      onChange={(e) => setVitalsForm({ ...vitalsForm, patientId: e.target.value })}
+                      required
+                      style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 14, background: '#fff' }}
+                    >
+                      <option value="">-- Seleccionar paciente --</option>
+                      {patients.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.full_name} {p.dni ? `(DNI: ${p.dni})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <label style={{ display: 'grid', gap: 6, fontWeight: 600, fontSize: 14 }}>
+                      Presión Sistólica (mmHg)
+                      <input
+                        type="number"
+                        placeholder="Ej. 120"
+                        value={vitalsForm.systolic}
+                        onChange={(e) => setVitalsForm({ ...vitalsForm, systolic: e.target.value })}
+                        style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 14 }}
+                      />
+                    </label>
+                    <label style={{ display: 'grid', gap: 6, fontWeight: 600, fontSize: 14 }}>
+                      Presión Diastólica (mmHg)
+                      <input
+                        type="number"
+                        placeholder="Ej. 80"
+                        value={vitalsForm.diastolic}
+                        onChange={(e) => setVitalsForm({ ...vitalsForm, diastolic: e.target.value })}
+                        style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 14 }}
+                      />
+                    </label>
+                  </div>
+                  {alerts.bp && (
+                    <div style={{ marginTop: -8 }}>
+                      <span style={getAlertStyle(alerts.bp.type)}>{alerts.bp.message}</span>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <label style={{ display: 'grid', gap: 6, fontWeight: 600, fontSize: 14 }}>
+                      Frecuencia Cardíaca (lpm)
+                      <input
+                        type="number"
+                        placeholder="Ej. 75"
+                        value={vitalsForm.heartRate}
+                        onChange={(e) => setVitalsForm({ ...vitalsForm, heartRate: e.target.value })}
+                        style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 14 }}
+                      />
+                      {alerts.hr && (
+                        <div>
+                          <span style={getAlertStyle(alerts.hr.type)}>{alerts.hr.message}</span>
+                        </div>
+                      )}
+                    </label>
+
+                    <label style={{ display: 'grid', gap: 6, fontWeight: 600, fontSize: 14 }}>
+                      Temperatura (°C)
+                      <input
+                        type="number"
+                        step="0.1"
+                        placeholder="Ej. 36.5"
+                        value={vitalsForm.temperature}
+                        onChange={(e) => setVitalsForm({ ...vitalsForm, temperature: e.target.value })}
+                        style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 14 }}
+                      />
+                      {alerts.temp && (
+                        <div>
+                          <span style={getAlertStyle(alerts.temp.type)}>{alerts.temp.message}</span>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <label style={{ display: 'grid', gap: 6, fontWeight: 600, fontSize: 14 }}>
+                      Saturación de O₂ (%)
+                      <input
+                        type="number"
+                        placeholder="Ej. 98"
+                        value={vitalsForm.oxygenSaturation}
+                        onChange={(e) => setVitalsForm({ ...vitalsForm, oxygenSaturation: e.target.value })}
+                        style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 14 }}
+                      />
+                      {alerts.o2 && (
+                        <div>
+                          <span style={getAlertStyle(alerts.o2.type)}>{alerts.o2.message}</span>
+                        </div>
+                      )}
+                    </label>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      <label style={{ display: 'grid', gap: 6, fontWeight: 600, fontSize: 14 }}>
+                        Peso (kg)
+                        <input
+                          type="number"
+                          step="0.1"
+                          placeholder="Ej. 70"
+                          value={vitalsForm.weight}
+                          onChange={(e) => setVitalsForm({ ...vitalsForm, weight: e.target.value })}
+                          style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 14 }}
+                        />
+                      </label>
+                      <label style={{ display: 'grid', gap: 6, fontWeight: 600, fontSize: 14 }}>
+                        Altura (cm)
+                        <input
+                          type="number"
+                          step="0.1"
+                          placeholder="Ej. 175"
+                          value={vitalsForm.height}
+                          onChange={(e) => setVitalsForm({ ...vitalsForm, height: e.target.value })}
+                          style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 14 }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                    <button
+                      type="submit"
+                      disabled={savingVitals || !vitalsForm.patientId}
+                      style={{
+                        padding: '10px 16px',
+                        borderRadius: 10,
+                        border: 'none',
+                        background: savingVitals || !vitalsForm.patientId ? '#94a3b8' : '#0f766e',
+                        color: '#fff',
+                        cursor: savingVitals || !vitalsForm.patientId ? 'not-allowed' : 'pointer',
+                        fontWeight: 700,
+                        fontSize: 14,
+                        flex: 1
+                      }}
+                    >
+                      {savingVitals ? 'Guardando...' : 'Guardar Signos Vitales'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setVitalsForm({
+                          patientId: vitalsForm.patientId,
+                          systolic: '',
+                          diastolic: '',
+                          heartRate: '',
+                          temperature: '',
+                          weight: '',
+                          height: '',
+                          oxygenSaturation: '',
+                        })
+                      }
+                      style={{
+                        padding: '10px 14px',
+                        borderRadius: 10,
+                        border: '1px solid #cbd5e1',
+                        background: '#fff',
+                        cursor: 'pointer',
+                        fontSize: 14,
+                        color: '#475569'
+                      }}
+                    >
+                      Limpiar
+                    </button>
+                  </div>
+                </form>
+
+                {/* Historial de Signos Vitales */}
+                <div style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: 24 }}>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: 16, color: '#334155' }}>Historial del Paciente</h4>
+                  {!vitalsForm.patientId ? (
+                    <p style={{ color: '#64748b', fontSize: 14, fontStyle: 'italic' }}>
+                      Seleccioná un paciente para ver su historial de signos vitales.
+                    </p>
+                  ) : loadingVitalsHistory ? (
+                    <p style={{ color: '#0f766e', fontSize: 14 }}>Cargando historial...</p>
+                  ) : latestVitals.length === 0 ? (
+                    <p style={{ color: '#64748b', fontSize: 14 }}>No hay registros anteriores para este paciente.</p>
+                  ) : (
+                    <div style={{ display: 'grid', gap: 12, maxHeight: '350px', overflowY: 'auto', paddingRight: 8 }}>
+                      {latestVitals.map((item) => {
+                        const itemAlerts = getVitalsAlerts({
+                          systolic: item.blood_pressure_systolic,
+                          diastolic: item.blood_pressure_diastolic,
+                          heartRate: item.heart_rate,
+                          temperature: item.temperature,
+                          oxygenSaturation: item.oxygen_saturation,
+                        });
+                        return (
+                          <div
+                            key={item.id}
+                            style={{
+                              padding: 12,
+                              borderRadius: 10,
+                              background: '#fff',
+                              border: '1px solid #e2e8f0',
+                              fontSize: 13,
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', marginBottom: 8, fontSize: 12 }}>
+                              <strong>Registro</strong>
+                              <span>
+                                {new Date(item.recorded_at).toLocaleString('es-AR', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                              <div>
+                                <strong>P. Arterial:</strong> {item.blood_pressure_systolic && item.blood_pressure_diastolic ? `${item.blood_pressure_systolic}/${item.blood_pressure_diastolic} mmHg` : 'N/A'}
+                                {itemAlerts.bp && (
+                                  <div style={{ marginTop: 2 }}>
+                                    <span style={{ ...getAlertStyle(itemAlerts.bp.type), fontSize: '10px', padding: '1px 4px' }}>{itemAlerts.bp.message}</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <strong>Frec. Cardíaca:</strong> {item.heart_rate ? `${item.heart_rate} lpm` : 'N/A'}
+                                {itemAlerts.hr && (
+                                  <div style={{ marginTop: 2 }}>
+                                    <span style={{ ...getAlertStyle(itemAlerts.hr.type), fontSize: '10px', padding: '1px 4px' }}>{itemAlerts.hr.message}</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <strong>Temperatura:</strong> {item.temperature ? `${parseFloat(item.temperature).toFixed(1)} °C` : 'N/A'}
+                                {itemAlerts.temp && (
+                                  <div style={{ marginTop: 2 }}>
+                                    <span style={{ ...getAlertStyle(itemAlerts.temp.type), fontSize: '10px', padding: '1px 4px' }}>{itemAlerts.temp.message}</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <strong>Saturación O₂:</strong> {item.oxygen_saturation ? `${item.oxygen_saturation}%` : 'N/A'}
+                                {itemAlerts.o2 && (
+                                  <div style={{ marginTop: 2 }}>
+                                    <span style={{ ...getAlertStyle(itemAlerts.o2.type), fontSize: '10px', padding: '1px 4px' }}>{itemAlerts.o2.message}</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <strong>Peso:</strong> {item.weight ? `${parseFloat(item.weight).toFixed(1)} kg` : 'N/A'}
+                              </div>
+                              <div>
+                                <strong>Altura:</strong> {item.height ? `${parseFloat(item.height).toFixed(1)} cm` : 'N/A'}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           ) : null}
 
@@ -515,6 +1057,9 @@ function Dashboard({ user, onSignOut }) {
                         <button type="button" onClick={() => navigate(`/patients/${patient.id}`)} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer' }}>
                           Ver historial
                         </button>
+                        <button type="button" onClick={() => handleOpenVitals(patient)} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', color: '#334155', cursor: 'pointer' }}>
+                          Signos Vitales
+                        </button>
                         <button type="button" onClick={() => handleDelete(patient)} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #fecaca', background: '#fff1f2', color: '#b91c1c', cursor: 'pointer' }}>
                           Eliminar
                         </button>
@@ -540,7 +1085,6 @@ function App() {
 
     const initAuth = async () => {
       try {
-        // 1. Obtener la sesión inicial de forma secuencial
         const { data: { session } } = await supabase.auth.getSession();
         setUser(session?.user ?? null);
       } catch (error) {
@@ -549,9 +1093,6 @@ function App() {
         setAuthReady(true);
       }
 
-      // 2. Registrar el listener solo después de haber resuelto la sesión inicial.
-      // Esto evita que getSession y onAuthStateChange realicen peticiones
-      // concurrentes de refresco de token, previniendo el error 400.
       const { data } = supabase.auth.onAuthStateChange((_event, session) => {
         setUser(session?.user ?? null);
         setAuthReady(true);
@@ -561,7 +1102,6 @@ function App() {
 
     initAuth();
 
-    // Limpiar el listener al desmontar
     return () => {
       if (authListener?.subscription?.unsubscribe) {
         authListener.subscription.unsubscribe();
