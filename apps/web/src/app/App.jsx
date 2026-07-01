@@ -173,6 +173,10 @@ function Dashboard({ user, onSignOut }) {
     full_name: '',
     diagnosis_summary: '',
     status: 'active',
+    dni: '',
+    birth_date: '',
+    gender: 'No especificado',
+    contact: '',
   });
 
   const formIsValid = useMemo(() => formData.full_name.trim().length > 0, [formData.full_name]);
@@ -243,6 +247,15 @@ function Dashboard({ user, onSignOut }) {
           diagnosis_summary: formData.diagnosis_summary,
           status: formData.status,
           assigned_doctor_id: user?.id,
+          // Nuevas columnas de Supabase
+          dni: formData.dni || null,
+          birth_date: formData.birth_date || null,
+          gender: formData.gender || null,
+          contact: formData.contact || null,
+          // Campos heredados/compatibilidad
+          document_number: formData.dni || null,
+          date_of_birth: formData.birth_date || null,
+          sex: formData.gender || 'No especificado',
         },
       ])
       .select();
@@ -259,6 +272,10 @@ function Dashboard({ user, onSignOut }) {
         full_name: '',
         diagnosis_summary: '',
         status: 'active',
+        dni: '',
+        birth_date: '',
+        gender: 'No especificado',
+        contact: '',
       });
       setMessage({ type: 'success', text: `Paciente creado correctamente: ${data[0].full_name}` });
     }
@@ -343,42 +360,88 @@ function Dashboard({ user, onSignOut }) {
             }}
             style={{ display: 'grid', gap: 12 }}
           >
-            <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
-              Nombre completo <span style={{ color: '#b91c1c' }}>*</span>
-              <input
-                autoFocus
-                placeholder="Nombre y apellido"
-                value={formData.full_name}
-                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 16 }}
-              />
-            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+              <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+                Nombre completo <span style={{ color: '#b91c1c' }}>*</span>
+                <input
+                  autoFocus
+                  placeholder="Nombre y apellido"
+                  value={formData.full_name}
+                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                  style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
+                />
+              </label>
+
+              <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+                DNI / Documento
+                <input
+                  placeholder="Número de documento"
+                  value={formData.dni}
+                  onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
+                  style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
+                />
+              </label>
+
+              <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+                Fecha de nacimiento
+                <input
+                  type="date"
+                  value={formData.birth_date}
+                  onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
+                  style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
+                />
+              </label>
+
+              <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+                Sexo
+                <select
+                  value={formData.gender}
+                  onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                  style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
+                >
+                  <option value="No especificado">No especificado</option>
+                  <option value="Masculino">Masculino</option>
+                  <option value="Femenino">Femenino</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </label>
+
+              <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+                Contacto (Teléfono / Email)
+                <input
+                  placeholder="Ej. +54 387 1234567 o email"
+                  value={formData.contact}
+                  onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
+                  style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
+                />
+              </label>
+
+              <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+                Estado clínico
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
+                >
+                  <option value="active">Activo</option>
+                  <option value="follow_up">Seguimiento</option>
+                  <option value="discharged">Alta</option>
+                  <option value="deceased">Fallecido</option>
+                </select>
+              </label>
+            </div>
 
             <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
               Resumen del diagnóstico
               <input
-                placeholder="Resumen breve"
+                placeholder="Resumen breve del diagnóstico o patología"
                 value={formData.diagnosis_summary}
                 onChange={(e) => setFormData({ ...formData, diagnosis_summary: e.target.value })}
-                style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 16 }}
+                style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
               />
             </label>
 
-            <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
-              Estado clínico
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 16 }}
-              >
-                <option value="active">Activo</option>
-                <option value="follow_up">Seguimiento</option>
-                <option value="discharged">Alta</option>
-                <option value="deceased">Fallecido</option>
-              </select>
-            </label>
-
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
               <button type="submit" disabled={savingPatient || !formIsValid} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: savingPatient ? '#94a3b8' : '#2563eb', color: '#fff', cursor: savingPatient ? 'wait' : 'pointer', fontWeight: 700 }}>
                 {savingPatient ? 'Guardando paciente…' : 'Crear paciente'}
               </button>
@@ -426,7 +489,17 @@ function Dashboard({ user, onSignOut }) {
                 <tbody>
                   {patients.map((patient) => (
                     <tr key={patient.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '10px 8px', fontWeight: 700 }}>{patient.full_name}</td>
+                      <td style={{ padding: '10px 8px' }}>
+                        <div style={{ fontWeight: 700 }}>{patient.full_name}</div>
+                        <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+                          {[
+                            (patient.dni || patient.document_number) && `DNI: ${patient.dni || patient.document_number}`,
+                            (patient.birth_date || patient.date_of_birth) && `Nac.: ${patient.birth_date || patient.date_of_birth}`,
+                            (patient.gender || patient.sex) && (patient.gender || patient.sex) !== 'No especificado' && `Sexo: ${patient.gender || patient.sex}`,
+                            patient.contact && `Contacto: ${patient.contact}`
+                          ].filter(Boolean).join(' · ') || 'Sin datos adicionales'}
+                        </div>
+                      </td>
                       <td style={{ padding: '10px 8px', color: '#475569' }}>{patient.diagnosis_summary || 'Sin diagnóstico'}</td>
                       <td style={{ padding: '10px 8px' }}>{statusLabel(patient.status)}</td>
                       <td style={{ padding: '10px 8px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
