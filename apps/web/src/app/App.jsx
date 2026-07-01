@@ -1,13 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import PatientDetail from './PatientDetail';
+import { supabase } from './supabaseClient';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://example.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'example-anon-key';
 const doctorInviteCode = import.meta.env.VITE_DOCTOR_INVITE_CODE || '';
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 function getAuthErrorMessage(error, isSignUp = false) {
   const message = error?.message || '';
@@ -36,6 +32,7 @@ function getAuthErrorMessage(error, isSignUp = false) {
 }
 
 function AuthPage({ onSignIn }) {
+  const navigate = useNavigate();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -71,6 +68,9 @@ function AuthPage({ onSignIn }) {
 
       if (data.session) {
         onSignIn?.(data.session);
+        // Esperar un microtask para que React actualice el estado
+        await Promise.resolve();
+        navigate('/');
       } else {
         setSuccess('Registro solicitado. Revisa tu correo para confirmar la cuenta.');
       }
@@ -84,6 +84,9 @@ function AuthPage({ onSignIn }) {
       }
 
       onSignIn?.(data.session);
+      // Esperar un microtask para que React actualice el estado
+      await Promise.resolve();
+      navigate('/');
     }
 
     setLoading(false);
@@ -149,6 +152,14 @@ function ProtectedRoute({ user, children }) {
   }
 
   return children;
+}
+
+function LoginRoute({ user, onSignIn }) {
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <AuthPage onSignIn={onSignIn} />;
 }
 
 function Dashboard({ user, onSignOut }) {
@@ -443,19 +454,32 @@ function App() {
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-    const initializeAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-      setAuthReady(true);
-    };
-
-    initializeAuth();
-
+    // Registrar el listener PRIMERO antes de cargar la sesión
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      setAuthReady(true);
     });
 
-    return () => authListener.subscription.unsubscribe();
+    // Cargar la sesión actual
+    const loadSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user ?? null);
+        setAuthReady(true);
+      } catch (error) {
+        console.error('Error al cargar sesión:', error);
+        setAuthReady(true);
+      }
+    };
+
+    loadSession();
+
+    // Limpiar el listener al desmontar
+    return () => {
+      if (authListener?.subscription?.unsubscribe) {
+        authListener.subscription.unsubscribe();
+      }
+    };
   }, []);
 
   const handleSignOut = async () => {
@@ -470,7 +494,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<AuthPage onSignIn={(session) => setUser(session?.user ?? null)} />} />
+        <Route path="/login" element={<LoginRoute user={user} onSignIn={(session) => setUser(session?.user ?? null)} />} />
         <Route
           path="/"
           element={

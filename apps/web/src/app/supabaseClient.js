@@ -15,7 +15,13 @@ const SUPABASE_KEY = '__ONCO_SUPABASE_CLIENT__';
 let supabase;
 
 if (!globalThis[SUPABASE_KEY]) {
-  supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey);
+  supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
   globalThis[SUPABASE_KEY] = supabase;
 } else {
   supabase = globalThis[SUPABASE_KEY];
