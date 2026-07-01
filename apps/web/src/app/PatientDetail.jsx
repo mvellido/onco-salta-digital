@@ -1,19 +1,72 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://example.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'example-anon-key';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from './supabaseClient';
 
 const STORAGE_BUCKET = 'medical-history';
 
-function PatientDetail({ user, initialPatient = null, initialEvents = [] }) {
+function getStorageErrorMessage(error) {
+  const message = error?.message || '';
+  if (/bucket not found|Bucket not found|bucket.*not.*found/i.test(message)) {
+    return `Bucket de almacenamiento '${STORAGE_BUCKET}' no encontrado. Crea el bucket en Supabase Storage o revisa la configuración.`;
+  }
+
+  if (/permission denied|forbidden|not authorized|authorization/i.test(message)) {
+    return `No tienes permiso para acceder al bucket '${STORAGE_BUCKET}'. Revisa las políticas de Supabase Storage y la configuración de RLS.`;
+  }
+
+  return `Error de almacenamiento: ${message || 'Operación de storage fallida.'}`;
+}
+
+function getTableNotFoundErrorMessage(error, tableName) {
+  const message = error?.message || '';
+  if (/could not find the table|table .* does not exist|relation .* does not exist|No se encontró.*tabla|tabla .* no existe/i.test(message)) {
+    return `La tabla '${tableName}' no existe en la base de datos de Supabase. Ejecuta el SQL de ${tableName}.sql o crea la tabla en el esquema público.`;
+  }
+
+  return null;
+}
+
+function isPreviewableImageAttachment(attachment) {
+  const contentType = attachment?.content_type || '';
+  return contentType.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg)$/i.test(attachment?.file_name || '');
+}
+
+async function getSignedUrlForAttachment(attachment) {
+  if (!isPreviewableImageAttachment(attachment)) {
+    return null;
+  }
+
+  const { data, error } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrl(attachment.storage_path, 3600);
+  if (error) {
+    return null;
+  }
+
+  return data?.signedUrl || null;
+}
+
+function getFriendlyErrorMessage(error, fallback, resourceName) {
+  if (!error) {
+    return fallback;
+  }
+
+  const message = error?.message || '';
+  const tableMessage = resourceName ? getTableNotFoundErrorMessage(error, resourceName) : null;
+  if (tableMessage) {
+    return tableMessage;
+  }
+
+  const isStorageError = /bucket not found|Bucket not found|bucket.*not.*found|permission denied|forbidden|not authorized|authorization/i.test(message);
+
+  return isStorageError ? getStorageErrorMessage(error) : message || fallback;
+}
+
+function PatientDetail({ user, initialPatient = null, initialEvents = null }) {
   const { patientId } = useParams();
   const navigate = useNavigate();
   const [patient, setPatient] = useState(initialPatient);
-  const [events, setEvents] = useState(initialEvents);
+  const [events, setEvents] = useState(initialEvents || []);
   const [attachmentsByEvent, setAttachmentsByEvent] = useState({});
+  const [thumbnailUrls, setThumbnailUrls] = useState({});
   const [loading, setLoading] = useState(!initialPatient);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -30,48 +83,102 @@ function PatientDetail({ user, initialPatient = null, initialEvents = [] }) {
     outcome_note: '',
   });
 
-  const loadPatientAndEvents = async () => {
-    setLoading(!initialPatient);
-    const { data: patientData, error: patientError } = await supabase
-      .from('patients')
-      .select('*')
-      .eq('id', patientId)
-      .maybeSingle();
+  // Usar ref para evitar múltiples llamadas simultáneas
+  const loadingRef = useRef(false);
 
-    if (patientError) {
-      setMessage({ type: 'error', text: patientError.message || 'No se pudo cargar el paciente.' });
-      setLoading(false);
-      return;
-    }
+  const loadAttachmentThumbnails = useCallback(async (attachments) => {
+    const urls = {};
 
-    const { data: eventData, error: eventsError } = await supabase
-      .from('treatment_history')
-      .select('*')
-      .eq('patient_id', patientId)
-      .order('event_date', { ascending: false });
+    await Promise.all(
+      attachments.map(async (attachment) => {
+        if (!isPreviewableImageAttachment(attachment)) {
+          return;
+        }
 
-    if (eventsError) {
-      setMessage({ type: 'error', text: eventsError.message || 'No se pudo cargar el historial.' });
-    }
+        const url = await getSignedUrlForAttachment(attachment);
+        if (url) {
+          urls[attachment.id] = url;
+        }
+      })
+    );
 
-    setPatient(patientData);
-    setEvents(eventData || []);
+    setThumbnailUrls((current) => ({ ...current, ...urls }));
+  }, []);
 
-    const attachments = {};
-    if (eventData?.length) {
-      const { data: attachmentData } = await supabase
-        .from('event_attachments')
+  const loadPatientAndEvents = useCallback(async () => {
+    // Evitar múltiples llamadas simultáneas
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    setLoading(true);
+
+    try {
+      const { data: patientData, error: patientError } = await supabase
+        .from('patients')
         .select('*')
-        .in('event_id', eventData.map((event) => event.id));
+        .eq('id', patientId)
+        .maybeSingle();
 
-      attachmentData?.forEach((attachment) => {
-        attachments[attachment.event_id] = [...(attachments[attachment.event_id] || []), attachment];
-      });
+      if (patientError) {
+        setMessage({ type: 'error', text: patientError.message || 'No se pudo cargar el paciente.' });
+        setLoading(false);
+        return;
+      }
+
+      const { data: eventData, error: eventsError } = await supabase
+        .from('treatment_history')
+        .select('*')
+        .eq('patient_id', patientId)
+        .order('event_date', { ascending: false });
+
+      if (eventsError) {
+        const isMissingTable = /relation .*treatment_history|does not exist|not found/i.test(eventsError.message || '');
+        setMessage({
+          type: 'error',
+          text: isMissingTable
+            ? 'El historial clínico aún no está creado en Supabase. Ejecuta el SQL de treatment_history.sql en el editor SQL de Supabase.'
+            : eventsError.message || 'No se pudo cargar el historial.',
+        });
+      }
+
+      setPatient(patientData);
+      setEvents(eventData || []);
+
+      const attachments = {};
+      if (eventData?.length) {
+        const { data: attachmentData, error: attachmentError } = await supabase
+          .from('event_attachments')
+          .select('*')
+          .in('event_id', eventData.map((event) => event.id));
+
+        if (attachmentError) {
+          setMessage({
+            type: 'error',
+            text: getFriendlyErrorMessage(
+              attachmentError,
+              'No se pudieron cargar los adjuntos.',
+              'event_attachments'
+            ),
+          });
+        } else {
+          attachmentData?.forEach((attachment) => {
+            attachments[attachment.event_id] = [...(attachments[attachment.event_id] || []), attachment];
+          });
+        }
+      }
+
+      setAttachmentsByEvent(attachments);
+
+      const allAttachments = Object.values(attachments).flat();
+      if (allAttachments.length) {
+        await loadAttachmentThumbnails(allAttachments);
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message || 'No se pudo cargar el historial clínico.' });
+    } finally {
+      setLoading(false);
+      loadingRef.current = false;
     }
-
-    setAttachmentsByEvent(attachments);
-    setLoading(false);
-  };
+  }, [patientId, loadAttachmentThumbnails]);
 
   useEffect(() => {
     if (initialPatient && initialEvents) {
@@ -81,10 +188,10 @@ function PatientDetail({ user, initialPatient = null, initialEvents = [] }) {
       return;
     }
 
-    if (patientId) {
+    if (patientId && !loadingRef.current) {
       loadPatientAndEvents();
     }
-  }, [patientId, initialPatient, initialEvents]);
+  }, [patientId, loadPatientAndEvents]);
 
   const eventTypes = useMemo(
     () => ['Diagnóstico', 'Quimioterapia', 'Radioterapia', 'Cirugía', 'Consulta de seguimiento', 'Otro'],
@@ -129,6 +236,16 @@ function PatientDetail({ user, initialPatient = null, initialEvents = [] }) {
     });
   };
 
+  const buildAttachmentPath = (eventId, fileName) => {
+    const doctorId = user?.id;
+    if (!doctorId) {
+      throw new Error('No se encontró el UID del médico. Vuelve a iniciar sesión para continuar.');
+    }
+
+    const safeName = fileName.replace(/\s+/g, '-').toLowerCase();
+    return `${doctorId}/patient_${patientId}/event_${eventId}/${Date.now()}-${safeName}`;
+  };
+
   const uploadAttachments = async (eventId) => {
     if (!selectedFiles.length) {
       return [];
@@ -136,15 +253,14 @@ function PatientDetail({ user, initialPatient = null, initialEvents = [] }) {
 
     const uploadedAttachments = [];
     for (const file of selectedFiles) {
-      const safeName = file.name.replace(/\s+/g, '-').toLowerCase();
-      const path = `${patientId}/${eventId}/${Date.now()}-${safeName}`;
+      const path = buildAttachmentPath(eventId, file.name);
       const { data: uploadData, error: uploadError } = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, {
         cacheControl: '3600',
         upsert: false,
       });
 
       if (uploadError) {
-        throw uploadError;
+        throw new Error(getStorageErrorMessage(uploadError));
       }
 
       const { data: attachmentData, error: attachmentError } = await supabase
@@ -161,7 +277,13 @@ function PatientDetail({ user, initialPatient = null, initialEvents = [] }) {
         .select();
 
       if (attachmentError) {
-        throw attachmentError;
+        throw new Error(
+          getFriendlyErrorMessage(
+            attachmentError,
+            'No se pudo guardar el registro del adjunto.',
+            'event_attachments'
+          )
+        );
       }
 
       uploadedAttachments.push(attachmentData?.[0]);
@@ -229,6 +351,11 @@ function PatientDetail({ user, initialPatient = null, initialEvents = [] }) {
             ...current,
             [savedEvent.id]: [...(current[savedEvent.id] || []), ...uploaded],
           }));
+
+          const imageUploads = uploaded.filter(isPreviewableImageAttachment);
+          if (imageUploads.length) {
+            await loadAttachmentThumbnails(imageUploads);
+          }
         }
 
         if (editingEventId) {
@@ -242,7 +369,7 @@ function PatientDetail({ user, initialPatient = null, initialEvents = [] }) {
 
       resetForm();
     } catch (error) {
-      setMessage({ type: 'error', text: error.message || 'No se pudo guardar el evento.' });
+      setMessage({ type: 'error', text: getFriendlyErrorMessage(error, 'No se pudo guardar el evento.') });
     } finally {
       setSaving(false);
     }
@@ -251,7 +378,7 @@ function PatientDetail({ user, initialPatient = null, initialEvents = [] }) {
   const handleDownload = async (attachment) => {
     const { data, error } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrl(attachment.storage_path, 3600);
     if (error) {
-      setMessage({ type: 'error', text: error.message || 'No se pudo descargar el archivo.' });
+      setMessage({ type: 'error', text: getStorageErrorMessage(error) });
       return;
     }
 
@@ -268,7 +395,7 @@ function PatientDetail({ user, initialPatient = null, initialEvents = [] }) {
       setPreviewAttachment(attachment);
       setPreviewUrl(data.signedUrl);
     } catch (error) {
-      setMessage({ type: 'error', text: error.message || 'No se pudo previsualizar el archivo.' });
+      setMessage({ type: 'error', text: getFriendlyErrorMessage(error, 'No se pudo previsualizar el archivo.', 'event_attachments') });
     }
   };
 
@@ -301,7 +428,7 @@ function PatientDetail({ user, initialPatient = null, initialEvents = [] }) {
 
       setMessage({ type: 'success', text: 'Adjunto eliminado correctamente.' });
     } catch (error) {
-      setMessage({ type: 'error', text: error.message || 'No se pudo eliminar el adjunto.' });
+      setMessage({ type: 'error', text: getFriendlyErrorMessage(error, 'No se pudo eliminar el adjunto.', 'event_attachments') });
     }
   };
 
@@ -405,6 +532,13 @@ function PatientDetail({ user, initialPatient = null, initialEvents = [] }) {
                         {(attachmentsByEvent[event.id] || []).map((attachment) => (
                           <li key={attachment.id} style={{ marginBottom: 6 }}>
                             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                              {thumbnailUrls[attachment.id] ? (
+                                <img
+                                  src={thumbnailUrls[attachment.id]}
+                                  alt={attachment.file_name}
+                                  style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 10, border: '1px solid #e2e8f0' }}
+                                />
+                              ) : null}
                               <button type="button" onClick={() => handleDownload(attachment)} style={{ background: 'none', border: 'none', color: '#2563eb', padding: 0, cursor: 'pointer' }}>
                                 {attachment.file_name}
                               </button>
