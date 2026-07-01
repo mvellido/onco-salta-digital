@@ -9,17 +9,16 @@ if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('example') || supab
   );
 }
 
+// Usar globalThis como almacenamiento único
+const SUPABASE_KEY = '__ONCO_SUPABASE_CLIENT__';
+
 let supabase;
 
-// Singleton: crear solo una instancia del cliente Supabase en todo el app
-if (typeof window !== 'undefined') {
-  if (!window.__ONCO_SUPABASE_CLIENT__) {
-    window.__ONCO_SUPABASE_CLIENT__ = createSupabaseClient(supabaseUrl, supabaseAnonKey);
-  }
-  supabase = window.__ONCO_SUPABASE_CLIENT__;
-} else {
-  // En servidor (SSR), crear una nueva instancia
+if (!globalThis[SUPABASE_KEY]) {
   supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey);
+  globalThis[SUPABASE_KEY] = supabase;
+} else {
+  supabase = globalThis[SUPABASE_KEY];
 }
 
 export { supabase };
