@@ -305,8 +305,22 @@ function Dashboard({ user, onSignOut }) {
   const [vitalsMessage, setVitalsMessage] = useState({ type: '', text: '' });
   const [latestVitals, setLatestVitals] = useState([]);
   const [loadingVitalsHistory, setLoadingVitalsHistory] = useState(false);
-
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('todos');
   const formIsValid = useMemo(() => formData.full_name.trim().length > 0, [formData.full_name]);
+  // Pacientes filtrados por búsqueda y estado
+  const filteredPatients = useMemo(() => {
+    return patients.filter((patient) => {
+      // Filtro por búsqueda (nombre o DNI)
+      const matchesSearch = patient.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            (patient.dni && patient.dni.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      // Filtro por estado clínico
+      const matchesStatus = statusFilter === 'todos' || patient.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [patients, searchTerm, statusFilter]);
 
   // Alertas visuales dinámicas basadas en los inputs actuales
   const alerts = useMemo(() => getVitalsAlerts(vitalsForm), [vitalsForm]);
@@ -609,12 +623,15 @@ function Dashboard({ user, onSignOut }) {
     setSavingVitals(false);
   };
 
-  const statusLabel = (status) => ({
-    active: 'Activo',
-    follow_up: 'Seguimiento',
-    discharged: 'Alta',
-    deceased: 'Fallecido',
-  }[status] || status);
+  const statusLabel = (status) => {
+    const labels = {
+      active: { text: 'Activo', color: '#16a34a', bg: '#dcfce7' },
+      follow_up: { text: 'Seguimiento', color: '#d97706', bg: '#fef3c7' },
+      discharged: { text: 'Alta', color: '#2563eb', bg: '#dbeafe' },
+      deceased: { text: 'Fallecido', color: '#dc2626', bg: '#fee2e2' },
+    };
+    return labels[status] || { text: status || 'Desconocido', color: '#6b7280', bg: '#f3f4f6' };
+  };
 
   return (
     <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: 1100, margin: '24px auto', padding: 24, background: '#f8fbff', borderRadius: 20 }}>
@@ -769,7 +786,42 @@ function Dashboard({ user, onSignOut }) {
               {loadingPatients ? 'Recargando…' : 'Recargar lista'}
             </button>
           </div>
-
+          {/* Buscador y Filtros */}
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+            <input
+              type="text"
+              placeholder="Buscar por nombre o DNI..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                padding: '10px 12px',
+                border: '1px solid #cbd5e1',
+                borderRadius: 10,
+                fontSize: 14,
+                flex: 1,
+                minWidth: '200px'
+              }}
+            />
+            
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{
+                padding: '10px 12px',
+                border: '1px solid #cbd5e1',
+                borderRadius: 10,
+                fontSize: 14,
+                background: '#fff',
+                minWidth: '150px'
+              }}
+            >
+              <option value="todos">Todos los estados</option>
+              <option value="active">Activo</option>
+              <option value="follow_up">Seguimiento</option>
+              <option value="discharged">Alta</option>
+              <option value="deceased">Fallecido</option>
+            </select>
+          </div>
           <button type="button" onClick={() => setVitalsOpen((current) => !current)} style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 10, border: '1px solid #cbd5e1', background: '#f8fafc', cursor: 'pointer' }}>
             {vitalsOpen ? 'Cerrar' : 'Abrir'} signos vitales
           </button>
@@ -1085,7 +1137,11 @@ function Dashboard({ user, onSignOut }) {
           ) : null}
 
           {loadingPatients && patients.length === 0 ? <p style={{ color: '#0f766e' }}>Cargando pacientes…</p> : null}
-          {!loadingPatients && patients.length === 0 ? <p style={{ color: '#64748b' }}>No hay pacientes cargados todavía.</p> : null}
+          {!loadingPatients && filteredPatients.length === 0 ? (
+  <p style={{ color: '#64748b' }}>
+    {patients.length === 0 ? 'No hay pacientes cargados todavía.' : 'No hay pacientes que coincidan con la búsqueda.'}
+  </p>
+) : null}
 
           {patients.length > 0 ? (
             <div style={{ overflowX: 'auto' }}>
@@ -1099,7 +1155,7 @@ function Dashboard({ user, onSignOut }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {patients.map((patient) => (
+                  {filteredPatients.map((patient) => (
                     <tr key={patient.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '10px 8px' }}>
                         <div style={{ fontWeight: 700 }}>{patient.full_name}</div>
