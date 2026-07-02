@@ -822,9 +822,6 @@ function Dashboard({ user, onSignOut }) {
               <option value="deceased">Fallecido</option>
             </select>
           </div>
-          <button type="button" onClick={() => setVitalsOpen((current) => !current)} style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 10, border: '1px solid #cbd5e1', background: '#f8fafc', cursor: 'pointer' }}>
-            {vitalsOpen ? 'Cerrar' : 'Abrir'} signos vitales
-          </button>
 
           {vitalsOpen ? (
             <div id="vitals-section" style={{ marginBottom: 24, padding: 24, borderRadius: 16, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
