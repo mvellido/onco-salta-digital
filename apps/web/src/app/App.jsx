@@ -291,6 +291,16 @@ function Dashboard({ user, onSignOut }) {
     gender: 'No especificado',
     contact: '',
   });
+  const [vitalsForm, setVitalsForm] = useState({
+    patientId: '',
+    systolic: '',
+    diastolic: '',
+    heartRate: '',
+    temperature: '',
+    weight: '',
+    height: '',
+    oxygenSaturation: '',
+  });  
   const [savingVitals, setSavingVitals] = useState(false);
   const [vitalsMessage, setVitalsMessage] = useState({ type: '', text: '' });
   const [latestVitals, setLatestVitals] = useState([]);
