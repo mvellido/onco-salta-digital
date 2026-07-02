@@ -684,46 +684,54 @@ function Dashboard({ user, onSignOut }) {
                 handleSubmit(event);
               }
             }}
-            style={{ display: 'grid', gap: 12 }}
+            style={{ display: 'grid', gap: 16 }}
           >
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-              <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+              <label style={{ display: 'grid', gap: 6, fontWeight: 600, fontSize: 14 }}>
                 Nombre completo <span style={{ color: '#b91c1c' }}>*</span>
                 <input
                   autoFocus
                   placeholder="Nombre y apellido"
                   value={formData.full_name}
                   onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                  style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
+                  style={{ padding: '12px 14px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15, transition: 'border 0.2s' }}
+                  onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                  onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
                 />
               </label>
 
-              <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+              <label style={{ display: 'grid', gap: 6, fontWeight: 600, fontSize: 14 }}>
                 DNI / Documento
                 <input
                   placeholder="Número de documento"
                   value={formData.dni}
                   onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
-                  style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
+                  style={{ padding: '12px 14px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15, transition: 'border 0.2s' }}
+                  onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                  onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
                 />
               </label>
 
-              <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+              <label style={{ display: 'grid', gap: 6, fontWeight: 600, fontSize: 14 }}>
                 Fecha de nacimiento
                 <input
                   type="date"
                   value={formData.birth_date}
                   onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
-                  style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
+                  style={{ padding: '12px 14px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15, transition: 'border 0.2s' }}
+                  onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                  onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
                 />
               </label>
 
-              <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+              <label style={{ display: 'grid', gap: 6, fontWeight: 600, fontSize: 14 }}>
                 Sexo
                 <select
                   value={formData.gender}
                   onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                  style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
+                  style={{ padding: '12px 14px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15, background: '#fff', transition: 'border 0.2s' }}
+                  onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                  onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
                 >
                   <option value="No especificado">No especificado</option>
                   <option value="Masculino">Masculino</option>
@@ -732,22 +740,26 @@ function Dashboard({ user, onSignOut }) {
                 </select>
               </label>
 
-              <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+              <label style={{ display: 'grid', gap: 6, fontWeight: 600, fontSize: 14 }}>
                 Contacto (Teléfono / Email)
                 <input
                   placeholder="Ej. +54 387 1234567 o email"
                   value={formData.contact}
                   onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
-                  style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
+                  style={{ padding: '12px 14px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15, transition: 'border 0.2s' }}
+                  onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                  onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
                 />
               </label>
 
-              <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+              <label style={{ display: 'grid', gap: 6, fontWeight: 600, fontSize: 14 }}>
                 Estado clínico
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
+                  style={{ padding: '12px 14px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15, background: '#fff', transition: 'border 0.2s' }}
+                  onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                  onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
                 >
                   <option value="active">Activo</option>
                   <option value="follow_up">Seguimiento</option>
@@ -757,19 +769,41 @@ function Dashboard({ user, onSignOut }) {
               </label>
             </div>
 
-            <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+            <label style={{ display: 'grid', gap: 6, fontWeight: 600, fontSize: 14 }}>
               Resumen del diagnóstico
               <input
                 placeholder="Resumen breve del diagnóstico o patología"
                 value={formData.diagnosis_summary}
                 onChange={(e) => setFormData({ ...formData, diagnosis_summary: e.target.value })}
-                style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
+                style={{ padding: '12px 14px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15, transition: 'border 0.2s' }}
+                onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
               />
             </label>
 
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
-              <button type="submit" disabled={savingPatient || !formIsValid} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: savingPatient ? '#94a3b8' : '#2563eb', color: '#fff', cursor: savingPatient ? 'wait' : 'pointer', fontWeight: 700 }}>
-                {savingPatient ? 'Guardando paciente…' : 'Crear paciente'}
+              <button 
+                type="submit" 
+                disabled={savingPatient || !formIsValid} 
+                style={{ 
+                  padding: '12px 24px', 
+                  borderRadius: 10, 
+                  border: 'none', 
+                  background: savingPatient || !formIsValid ? '#94a3b8' : '#2563eb', 
+                  color: '#fff', 
+                  cursor: savingPatient || !formIsValid ? 'not-allowed' : 'pointer', 
+                  fontWeight: 600,
+                  fontSize: '16px',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  if (!savingPatient && formIsValid) e.currentTarget.style.background = '#1d4ed8'
+                }}
+                onMouseLeave={(e) => {
+                  if (!savingPatient && formIsValid) e.currentTarget.style.background = '#2563eb'
+                }}
+              >
+                {savingPatient ? 'Guardando paciente…' : '➕ Crear paciente'}
               </button>
               {savingPatient ? <span style={{ color: '#0f766e' }}>Guardando…</span> : null}
             </div>
@@ -1152,11 +1186,20 @@ function Dashboard({ user, onSignOut }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredPatients.map((patient) => (
-                    <tr key={patient.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '10px 8px' }}>
-                        <div style={{ fontWeight: 700 }}>{patient.full_name}</div>
-                        <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+                  {filteredPatients.map((patient, index) => (
+                    <tr 
+                      key={patient.id} 
+                      style={{ 
+                        borderBottom: '1px solid #e2e8f0',
+                        background: index % 2 === 0 ? '#f8fafc' : '#ffffff',
+                        transition: 'background 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = index % 2 === 0 ? '#f8fafc' : '#ffffff'}
+                    >
+                      <td style={{ padding: '12px 8px' }}>
+                        <div style={{ fontWeight: 600 }}>{patient.full_name}</div>
+                        <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
                           {[
                             (patient.dni || patient.document_number) && `DNI: ${patient.dni || patient.document_number}`,
                             (patient.birth_date || patient.date_of_birth) && `Nac.: ${patient.birth_date || patient.date_of_birth}`,
@@ -1165,43 +1208,96 @@ function Dashboard({ user, onSignOut }) {
                           ].filter(Boolean).join(' · ') || 'Sin datos adicionales'}
                         </div>
                       </td>
-                      <td style={{ padding: '10px 8px', color: '#475569' }}>{patient.diagnosis_summary || 'Sin diagnóstico'}</td>
-                      <td style={{ padding: '10px 8px' }}>
+                      <td style={{ padding: '12px 8px', color: '#475569' }}>{patient.diagnosis_summary || 'Sin diagnóstico'}</td>
+                      <td style={{ padding: '12px 8px' }}>
                         <span style={{
                           background: statusLabel(patient.status).bg,
                           color: statusLabel(patient.status).color,
-                          padding: '4px 10px',
-                          borderRadius: '12px',
+                          padding: '4px 12px',
+                          borderRadius: '20px',
                           fontSize: '13px',
-                          fontWeight: 'bold',
+                          fontWeight: 600,
                           display: 'inline-block'
                         }}>
                           {statusLabel(patient.status).text}
                         </span>
                       </td>
-                      <td style={{ padding: '10px 8px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <button type="button" onClick={() => navigate(`/patients/${patient.id}`)} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer' }}>
-                          Ver historial
+                      <td style={{ padding: '12px 8px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <button 
+                          type="button" 
+                          onClick={() => navigate(`/patients/${patient.id}`)} 
+                          style={{ 
+                            padding: '8px 12px', 
+                            borderRadius: 8, 
+                            border: '1px solid #bfdbfe', 
+                            background: '#eff6ff', 
+                            color: '#1d4ed8', 
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: 500,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                        >
+                          👁️ Ver historial
                         </button>
-                        <button type="button" onClick={() => handleOpenVitals(patient)} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', color: '#334155', cursor: 'pointer' }}>
-                          Signos Vitales
+                        <button 
+                          type="button" 
+                          onClick={() => handleOpenVitals(patient)} 
+                          style={{ 
+                            padding: '8px 12px', 
+                            borderRadius: 8, 
+                            border: '1px solid #cbd5e1', 
+                            background: '#f8fafc', 
+                            color: '#334155', 
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: 500,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                        >
+                          ❤️ Signos Vitales
                         </button>
-                        <button type="button" onClick={() => handleDelete(patient)} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #fecaca', background: '#fff1f2', color: '#b91c1c', cursor: 'pointer' }}>
-                          Eliminar
+                        <button 
+                          type="button" 
+                          onClick={() => handleDelete(patient)} 
+                          style={{ 
+                            padding: '8px 12px', 
+                            borderRadius: 8, 
+                            border: '1px solid #fecaca', 
+                            background: '#fff1f2', 
+                            color: '#b91c1c', 
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: 500,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                        >
+                          🗑️ Eliminar
                         </button>
                         <button
                           type="button"
                           onClick={() => handleEdit(patient)}
                           style={{
-                            padding: '8px 10px',
+                            padding: '8px 12px',
                             borderRadius: 8,
                             border: '1px solid #fde68a',
                             background: '#fffbeb',
                             color: '#b45309',
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: 500,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4
                           }}
                         >
-                          Editar
+                          ✏️ Editar
                         </button>
                       </td>
                     </tr>
