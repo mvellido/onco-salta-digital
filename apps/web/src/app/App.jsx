@@ -1169,7 +1169,19 @@ function Dashboard({ user, onSignOut }) {
                         </div>
                       </td>
                       <td style={{ padding: '10px 8px', color: '#475569' }}>{patient.diagnosis_summary || 'Sin diagnóstico'}</td>
-                      <td style={{ padding: '10px 8px' }}>{statusLabel(patient.status)}</td>
+                      <td style={{ padding: '10px 8px' }}>
+                        <span style={{
+                          background: statusLabel(patient.status).bg,
+                          color: statusLabel(patient.status).color,
+                          padding: '4px 10px',
+                          borderRadius: '12px',
+                          fontSize: '13px',
+                          fontWeight: 'bold',
+                          display: 'inline-block'
+                        }}>
+                          {statusLabel(patient.status).text}
+                        </span>
+                      </td>
                       <td style={{ padding: '10px 8px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         <button type="button" onClick={() => navigate(`/patients/${patient.id}`)} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer' }}>
                           Ver historial
