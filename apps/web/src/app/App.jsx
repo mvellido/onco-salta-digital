@@ -432,7 +432,7 @@ function Dashboard({ user, onSignOut }) {
           contact: formData.contact || null,
           document_number: formData.dni || null,
           date_of_birth: formData.birth_date || null,
-          sex: formData.gender || 'No especificado',
+          sex: formData.gender || 'Otro',
         },
       ])
       .select();
@@ -518,7 +518,7 @@ function Dashboard({ user, onSignOut }) {
         contact: editingFormData.contact || null,
         document_number: editingFormData.dni || null,
         date_of_birth: editingFormData.birth_date || null,
-        sex: editingFormData.gender || 'No especificado',
+        sex: editingFormData.gender || 'Otro',
       })
       .eq('id', editingPatient.id);
 
