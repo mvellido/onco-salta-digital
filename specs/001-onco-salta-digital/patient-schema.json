@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "datos_generales": {
+      "type": "object",
+      "properties": {
+        "nombre_completo": { "type": "string" },
+        "dni": { "type": "string" },
+        "fecha_nacimiento": { "type": "string", "format": "date" },
+        "sexo": { "type": "string", "enum": ["Masculino", "Femenino", "Otro", "No especificado"] },
+        "contacto": { "type": "string" }
+      },
+      "required": ["nombre_completo"]
+    },
+    "historia_tumoral": {
+      "type": "object",
+      "properties": {
+        "ubicacion": { "type": "string" },
+        "estadio": { "type": "string" },
+        "marcadores_moleculares": { "type": "object" },
+        "diagnostico_resumen": { "type": "string" }
+      }
+    },
+    "tratamientos_medicacion": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "medicamento": { "type": "string" },
+          "dosis": { "type": "string" },
+          "frecuencia": { "type": "string" },
+          "fecha_inicio": { "type": "string", "format": "date" },
+          "fecha_fin": { "type": "string", "format": "date" },
+          "estado": { "type": "string", "enum": ["activo", "completado", "suspendido"] }
+        },
+        "required": ["medicamento", "fecha_inicio"]
+      }
+    }
+  },
+  "required": ["datos_generales"]
+}
