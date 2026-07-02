@@ -273,6 +273,8 @@ function Dashboard({ user, onSignOut }) {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [vitalsOpen, setVitalsOpen] = useState(false);
   const [formData, setFormData] = useState({
+  const [editingPatient, setEditingPatient] = useState(null);
+  const [editingFormData, setEditingFormData] = useState({
     full_name: '',
     diagnosis_summary: '',
     status: 'active',
@@ -474,7 +476,60 @@ function Dashboard({ user, onSignOut }) {
     setPatients((current) => current.filter((item) => item.id !== patient.id));
     setMessage({ type: 'success', text: `Paciente eliminado: ${patient.full_name}` });
   };
+  const handleEdit = (patient) => {
+  setEditingPatient(patient);
+  setEditingFormData({
+    full_name: patient.full_name || '',
+    diagnosis_summary: patient.diagnosis_summary || '',
+    status: patient.status || 'active',
+    dni: patient.dni || '',
+    birth_date: patient.birth_date || '',
+    gender: patient.gender || 'No especificado',
+    contact: patient.contact || '',
+  });
+};
 
+  const handleUpdate = async (event) => {
+    event.preventDefault();
+    setMessage({ type: '', text: '' });
+
+    if (!editingFormData.full_name.trim()) {
+      setMessage({ type: 'error', text: 'El nombre del paciente es obligatorio.' });
+      return;
+    }
+
+    setSavingPatient(true);
+
+    const { error: updateError } = await supabase
+      .from('patients')
+      .update({
+        full_name: editingFormData.full_name,
+        diagnosis_summary: editingFormData.diagnosis_summary,
+        status: editingFormData.status,
+        dni: editingFormData.dni || null,
+        birth_date: editingFormData.birth_date || null,
+        gender: editingFormData.gender || null,
+        contact: editingFormData.contact || null,
+        document_number: editingFormData.dni || null,
+        date_of_birth: editingFormData.birth_date || null,
+        sex: editingFormData.gender || 'No especificado',
+      })
+      .eq('id', editingPatient.id);
+
+    if (updateError) {
+      setMessage({ type: 'error', text: updateError.message || 'No se pudo actualizar el paciente.' });
+      setSavingPatient(false);
+      if (updateError.status === 401 || updateError.code === 'PGRST301') {
+        supabase.auth.signOut();
+      }
+      return;
+    }
+
+    setMessage({ type: 'success', text: `Paciente actualizado: ${editingFormData.full_name}` });
+    setEditingPatient(null);
+    loadPatients(true, 'Lista actualizada.');
+    setSavingPatient(false);
+  };
   // Abre el panel y selecciona al paciente haciendo scroll suave al contenedor
   const handleOpenVitals = (patient) => {
     setVitalsForm((prev) => ({
@@ -1063,12 +1118,136 @@ function Dashboard({ user, onSignOut }) {
                         <button type="button" onClick={() => handleDelete(patient)} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #fecaca', background: '#fff1f2', color: '#b91c1c', cursor: 'pointer' }}>
                           Eliminar
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(patient)}
+                          style={{
+                            padding: '8px 10px',
+                            borderRadius: 8,
+                            border: '1px solid #fde68a',
+                            background: '#fffbeb',
+                            color: '#b45309',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Editar
+                        </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            {editingPatient && (
+              <section style={{ background: '#fff', borderRadius: 16, padding: 20, marginTop: 20, boxShadow: '0 6px 20px rgba(15, 23, 42, 0.06)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <h2 style={{ margin: 0 }}>Editar paciente</h2>
+                  <button
+                    type="button"
+                    onClick={() => setEditingPatient(null)}
+                    style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+
+                <form onSubmit={handleUpdate} style={{ display: 'grid', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+                    <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+                      Nombre completo <span style={{ color: '#b91c1c' }}>*</span>
+                      <input
+                        value={editingFormData.full_name}
+                        onChange={(e) => setEditingFormData({ ...editingFormData, full_name: e.target.value })}
+                        style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
+                      />
+                    </label>
+
+                    <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+                      DNI / Documento
+                      <input
+                        value={editingFormData.dni}
+                        onChange={(e) => setEditingFormData({ ...editingFormData, dni: e.target.value })}
+                        style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
+                      />
+                    </label>
+
+                    <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+                      Fecha de nacimiento
+                      <input
+                        type="date"
+                        value={editingFormData.birth_date}
+                        onChange={(e) => setEditingFormData({ ...editingFormData, birth_date: e.target.value })}
+                        style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
+                      />
+                    </label>
+
+                    <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+                      Sexo
+                      <select
+                        value={editingFormData.gender}
+                        onChange={(e) => setEditingFormData({ ...editingFormData, gender: e.target.value })}
+                        style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
+                      >
+                        <option value="No especificado">No especificado</option>
+                        <option value="Masculino">Masculino</option>
+                        <option value="Femenino">Femenino</option>
+                        <option value="Otro">Otro</option>
+                      </select>
+                    </label>
+
+                    <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+                      Contacto (Teléfono / Email)
+                      <input
+                        value={editingFormData.contact}
+                        onChange={(e) => setEditingFormData({ ...editingFormData, contact: e.target.value })}
+                        style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
+                      />
+                    </label>
+
+                    <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+                      Estado clínico
+                      <select
+                        value={editingFormData.status}
+                        onChange={(e) => setEditingFormData({ ...editingFormData, status: e.target.value })}
+                        style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
+                      >
+                        <option value="active">Activo</option>
+                        <option value="follow_up">Seguimiento</option>
+                        <option value="discharged">Alta</option>
+                        <option value="deceased">Fallecido</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+                    Resumen del diagnóstico
+                    <input
+                      value={editingFormData.diagnosis_summary}
+                      onChange={(e) => setEditingFormData({ ...editingFormData, diagnosis_summary: e.target.value })}
+                      style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, fontSize: 15 }}
+                    />
+                  </label>
+
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <button
+                      type="submit"
+                      disabled={savingPatient}
+                      style={{
+                        padding: '10px 16px',
+                        borderRadius: 10,
+                        border: 'none',
+                        background: savingPatient ? '#94a3b8' : '#2563eb',
+                        color: '#fff',
+                        cursor: savingPatient ? 'wait' : 'pointer',
+                        fontWeight: 700
+                      }}
+                    >
+                      {savingPatient ? 'Guardando...' : 'Actualizar paciente'}
+                    </button>
+                  </div>
+                </form>
+              </section>
+            )}
           ) : null}
         </section>
       </div>
