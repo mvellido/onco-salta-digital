@@ -273,6 +273,14 @@ function Dashboard({ user, onSignOut }) {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [vitalsOpen, setVitalsOpen] = useState(false);
   const [formData, setFormData] = useState({
+    full_name: '',
+    diagnosis_summary: '',
+    status: 'active',
+    dni: '',
+    birth_date: '',
+    gender: 'No especificado',
+    contact: '',
+  });
   const [editingPatient, setEditingPatient] = useState(null);
   const [editingFormData, setEditingFormData] = useState({
     full_name: '',
@@ -282,18 +290,6 @@ function Dashboard({ user, onSignOut }) {
     birth_date: '',
     gender: 'No especificado',
     contact: '',
-  });
-
-  // Estado del formulario de signos vitales
-  const [vitalsForm, setVitalsForm] = useState({
-    patientId: '',
-    systolic: '',
-    diastolic: '',
-    heartRate: '',
-    temperature: '',
-    weight: '',
-    height: '',
-    oxygenSaturation: '',
   });
   const [savingVitals, setSavingVitals] = useState(false);
   const [vitalsMessage, setVitalsMessage] = useState({ type: '', text: '' });
