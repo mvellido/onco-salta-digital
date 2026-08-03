@@ -1,0 +1,486 @@
+﻿ apps/api/package-lock.json         |  47 +++++++++
+ apps/api/package.json              |   2 +
+ apps/api/src/index.js              | 210 +++++++++++++++++++++++++++++++++----
+ apps/web/index.html                |  33 +++++-
+ apps/web/src/app/App.jsx           | 103 ++++++++++--------
+ apps/web/src/app/PatientDetail.jsx |   1 +
+ 6 files changed, 331 insertions(+), 65 deletions(-)
+---
+diff --git a/apps/api/package.json b/apps/api/package.json
+index 00f4b5f..4adecd2 100644
+--- a/apps/api/package.json
++++ b/apps/api/package.json
+@@ -8,6 +8,8 @@
+     "start": "node src/index.js"
+   },
+   "dependencies": {
++    "@fastify/cors": "^11.2.0",
++    "@google/generative-ai": "^0.24.1",
+     "@supabase/supabase-js": "^2.110.0",
+     "ajv": "^8.20.0",
+     "dotenv": "^17.4.2",
+diff --git a/apps/api/src/index.js b/apps/api/src/index.js
+index dc042f2..c3d456d 100644
+--- a/apps/api/src/index.js
++++ b/apps/api/src/index.js
+@@ -4,6 +4,8 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+ import { fileURLToPath } from 'url';
+ import { dirname, join } from 'path';
+ import { config } from 'dotenv';
++import { validatePatientFormatted } from './validator.js';
++import cors from '@fastify/cors';
+ 
+ // Cargar variables de .env.local
+ const __filename = fileURLToPath(import.meta.url);
+@@ -61,40 +63,60 @@ fastify.get('/patients', async (request, reply) => {
+   }
+ });
+ 
+-// POST /patients - Crear paciente
++// POST /patients - Crear paciente CON VALIDACI├ôN Y LOGS
+ fastify.post('/patients', async (request, reply) => {
++  console.log('­ƒöì 1. POST /patients recibido');
++  
+   if (!supabase) {
++    console.log('ÔØî Supabase no configurado');
+     return reply.code(500).send({ error: 'Supabase no est├í configurado' });
+   }
++  console.log('Ô£à Supabase configurado');
+ 
+-  const { full_name, diagnosis_summary, status = 'active', assigned_doctor_id } = request.body || {};
++  try {
++    console.log('­ƒöì 2. Iniciando validaci├│n...');
++    const validation = validatePatientFormatted(request.body);
++    console.log('­ƒöì 3. Validaci├│n completada:', validation);
++    
++    if (!validation.isValid) {
++      console.log('ÔØî Validaci├│n fallida');
++      return reply.code(400).send({
++        error: 'Datos del paciente inv├ílidos seg├║n el esquema IA Core',
++        details: validation.errorsFormatted
++      });
++    }
++    console.log('Ô£à Validaci├│n exitosa');
+ 
+-  if (!full_name) {
+-    return reply.code(400).send({ error: 'full_name es requerido' });
+-  }
++    const { datos_generales, historia_tumoral } = request.body;
++    console.log('­ƒöì 4. Insertando en Supabase...');
+ 
+-  try {
+     const { data, error } = await supabase
+       .from('patients')
+-      .insert([
+-        {
+-          full_name,
+-          diagnosis_summary,
+-          status,
+-          assigned_doctor_id,
+-          created_at: new Date().toISOString(),
+-        },
+-      ])
++      .insert([{
++        full_name: datos_generales.nombre_completo,
++        dni: datos_generales.dni || null,
++        birth_date: datos_generales.fecha_nacimiento || null,
++        gender: datos_generales.sexo || 'No especificado',
++        contact: datos_generales.contacto || null,
++        diagnosis_summary: historia_tumoral?.diagnostico_resumen || '',
++        tumor_location: historia_tumoral?.ubicacion || null,
++        tumor_stage: historia_tumoral?.estadio || null,
++        molecular_markers: historia_tumoral?.marcadores_moleculares || {},
++      }])
+       .select();
+ 
+     if (error) {
+-      console.error('Error creating patient:', error);
++      console.log('ÔØî Error en Supabase:', error);
+       return reply.code(500).send({ error: error.message });
+     }
++    console.log('Ô£à Paciente creado en Supabase');
+ 
+-    return reply.code(201).send(data?.[0] || {});
++    return reply.code(201).send({
++      message: 'Paciente creado correctamente con validaci├│n IA Core',
++      patient: data?.[0] || {}
++    });
+   } catch (err) {
+-    console.error('Exception in POST /patients:', err);
++    console.log('ÔØî Excepci├│n en POST /patients:', err);
+     return reply.code(500).send({ error: err.message });
+   }
+ });
+@@ -130,6 +152,158 @@ fastify.get('/patients/:id', async (request, reply) => {
+   }
+ });
+ 
++// POST /ia/consult - Endpoint para consultar IA Core (con Gemini real)
++fastify.post('/ia/consult', async (request, reply) => {
++  try {
++    const { patientData, question } = request.body;
++
++    if (!patientData || !question) {
++      return reply.code(400).send({
++        error: 'Se requiere patientData y question para consultar IA Core'
++      });
++    }
++
++    // Importar Gemini SDK
++    const { GoogleGenerativeAI } = await import('@google/generative-ai');
++    
++    // Usar la API Key desde .env.local
++    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
++
++    // Configurar el modelo
++    const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
++
++    // Construir el prompt con los datos del paciente
++    const prompt = `
++      Eres un asistente m├®dico especializado en oncolog├¡a.
++      Analiza el siguiente caso cl├¡nico y responde la pregunta del m├®dico.
++
++      DATOS DEL PACIENTE:
++      - Nombre: ${patientData.datos_generales.nombre_completo}
++      - Edad: ${patientData.datos_generales.edad || 'No especificada'}
++      - Diagn├│stico: ${patientData.historia_tumoral.diagnostico_resumen}
++      - Estadio: ${patientData.historia_tumoral.estadio || 'No especificado'}
++      - Marcadores moleculares: ${JSON.stringify(patientData.historia_tumoral.marcadores_moleculares, null, 2)}
++
++      PREGUNTA DEL M├ëDICO:
++      ${question}
++
++      Responde de forma clara y basada en evidencia m├®dica.
++    `;
++
++    // Generar respuesta
++    const result = await model.generateContent(prompt);
++    const response = await result.response;
++    const answer = response.text();
++
++    return reply.code(200).send({
++      message: 'IA Core - Gemini real',
++      patient: patientData.datos_generales.nombre_completo,
++      question: question,
++      answer: answer
++    });
++
++  } catch (err) {
++    console.error('Exception in POST /ia/consult:', err);
++    return reply.code(500).send({ error: err.message });
++  }
++});
++
++// Habilitar CORS para todas las rutas
++fastify.register(cors, {
++  origin: true, // Permite cualquier origen (para desarrollo)
++  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
++  allowedHeaders: ['Content-Type', 'Authorization'],
++});
++
++// PUT /patients/:id - Actualizar paciente
++fastify.put('/patients/:id', async (request, reply) => {
++  if (!supabase) {
++    return reply.code(500).send({ error: 'Supabase no est├í configurado' });
++  }
++
++  const { id } = request.params;
++  const { 
++    full_name, 
++    diagnosis_summary, 
++    status, 
++    dni, 
++    birth_date, 
++    gender, 
++    contact,
++    tumor_location,
++    tumor_stage,
++    molecular_markers
++  } = request.body || {};
++
++  try {
++    const { data, error } = await supabase
++      .from('patients')
++      .update({
++        full_name,
++        diagnosis_summary,
++        status,
++        dni,
++        birth_date,
++        gender,
++        contact,
++        tumor_location,
++        tumor_stage,
++        molecular_markers,
++        updated_at: new Date().toISOString()
++      })
++      .eq('id', id)
++      .select();
++
++    if (error) {
++      console.error('Error updating patient:', error);
++      return reply.code(500).send({ error: error.message });
++    }
++
++    if (!data || data.length === 0) {
++      return reply.code(404).send({ error: 'Paciente no encontrado' });
++    }
++
++    return reply.code(200).send(data[0]);
++  } catch (err) {
++    console.error('Exception in PUT /patients/:id:', err);
++    return reply.code(500).send({ error: err.message });
++  }
++});
++
++// DELETE /patients/:id - Eliminar paciente
++fastify.delete('/patients/:id', async (request, reply) => {
++  if (!supabase) {
++    return reply.code(500).send({ error: 'Supabase no est├í configurado' });
++  }
++
++  const { id } = request.params;
++
++  try {
++    const { data, error } = await supabase
++      .from('patients')
++      .delete()
++      .eq('id', id)
++      .select();
++
++    if (error) {
++      console.error('Error deleting patient:', error);
++      return reply.code(500).send({ error: error.message });
++    }
++
++    if (!data || data.length === 0) {
++      return reply.code(404).send({ error: 'Paciente no encontrado' });
++    }
++
++    return reply.code(200).send({ 
++      message: 'Paciente eliminado correctamente',
++      deleted: data[0]
++    });
++  } catch (err) {
++    console.error('Exception in DELETE /patients/:id:', err);
++    return reply.code(500).send({ error: err.message });
++  }
++});
++
+ // Iniciar servidor
+ fastify.listen({ port, host: '0.0.0.0' }, (err) => {
+   if (err) {
+diff --git a/apps/web/index.html b/apps/web/index.html
+index dce6b84..684826d 100644
+--- a/apps/web/index.html
++++ b/apps/web/index.html
+@@ -1,9 +1,40 @@
+ <!doctype html>
+-<html lang="en">
++<html lang="es">
+   <head>
+     <meta charset="UTF-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>Onco-Salta Digital</title>
++    
++    <!-- ­ƒæç AGREGAR LA FUENTE INTER DESDE GOOGLE FONTS -->
++    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
++    
++    <style>
++      /* ­ƒæç ESTILOS GLOBALES PARA APLICAR LA FUENTE Y MEJORAR LA EXPERIENCIA */
++      * {
++        margin: 0;
++        padding: 0;
++        box-sizing: border-box;
++      }
++      
++      body {
++        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
++        background: #f8fafc;
++        color: #0f172a;
++        -webkit-font-smoothing: antialiased;
++        -moz-osx-font-smoothing: grayscale;
++      }
++      
++      /* Estilos para mejorar la accesibilidad y el enfoque por teclado */
++      :focus {
++        outline: 2px solid #2563eb;
++        outline-offset: 2px;
++      }
++      
++      /* Estilos para scroll suave */
++      html {
++        scroll-behavior: smooth;
++      }
++    </style>
+   </head>
+   <body>
+     <div id="root"></div>
+diff --git a/apps/web/src/app/App.jsx b/apps/web/src/app/App.jsx
+index 7bb7706..6fe65cb 100644
+--- a/apps/web/src/app/App.jsx
++++ b/apps/web/src/app/App.jsx
+@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
+ import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+ import PatientDetail from './PatientDetail';
+ import { supabase } from './supabaseClient';
++import { API_URL } from '../config';
+ 
+ const doctorInviteCode = import.meta.env.VITE_DOCTOR_INVITE_CODE || '';
+ 
+@@ -332,22 +333,20 @@ function Dashboard({ user, onSignOut }) {
+ 
+     setMessage((current) => (current.type === 'error' ? { type: '', text: '' } : current));
+ 
+-    const { data, error: fetchError } = await supabase
+-      .from('patients')
+-      .select('*')
+-      .order('created_at', { ascending: false });
+-
+-    if (fetchError) {
+-      setPatients([]);
+-      setMessage({ type: 'error', text: fetchError.message || 'No se pudieron listar los pacientes.' });
+-      if (fetchError.status === 401 || fetchError.code === 'PGRST301') {
+-        supabase.auth.signOut();
++    try {
++      const response = await fetch(`${API_URL}/patients`);
++      if (!response.ok) {
++        const errorData = await response.json();
++        throw new Error(errorData.error || 'Error al obtener pacientes');
+       }
+-    } else {
++      const data = await response.json();
+       setPatients(data || []);
+       if (successMessage) {
+         setMessage({ type: 'success', text: successMessage });
+       }
++    } catch (error) {
++      setPatients([]);
++      setMessage({ type: 'error', text: error.message || 'No se pudieron listar los pacientes.' });
+     }
+ 
+     setLoadingPatients(false);
+@@ -432,36 +431,39 @@ function Dashboard({ user, onSignOut }) {
+ 
+     setSavingPatient(true);
+ 
+-    const { data, error: insertError } = await supabase
+-      .from('patients')
+-      .insert([
+-        {
+-          full_name: formData.full_name,
+-          diagnosis_summary: formData.diagnosis_summary,
+-          status: formData.status,
+-          assigned_doctor_id: user?.id,
++    try {
++      // Construir el payload seg├║n el esquema esperado por la API
++      const patientData = {
++        datos_generales: {
++          nombre_completo: formData.full_name,
+           dni: formData.dni || null,
+-          birth_date: formData.birth_date || null,
+-          gender: formData.gender || null,
+-          contact: formData.contact || null,
+-          document_number: formData.dni || null,
+-          date_of_birth: formData.birth_date || null,
+-          sex: formData.gender || 'No especificado',
++          fecha_nacimiento: formData.birth_date || null,
++          sexo: formData.gender || 'No especificado',
++          contacto: formData.contact || null
+         },
+-      ])
+-      .select();
++        historia_tumoral: {
++          ubicacion: formData.tumor_location || null,
++          estadio: formData.tumor_stage || null,
++          marcadores_moleculares: formData.molecular_markers || {},
++          diagnostico_resumen: formData.diagnosis_summary || ''
++        }
++      };
+ 
+-    if (insertError) {
+-      setMessage({ type: 'error', text: insertError.message || 'No se pudo crear el paciente.' });
+-      setSavingPatient(false);
+-      if (insertError.status === 401 || insertError.code === 'PGRST301') {
+-        supabase.auth.signOut();
++      const response = await fetch(`${API_URL}/patients`, {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify(patientData)
++      });
++
++      if (!response.ok) {
++        const errorData = await response.json();
++        throw new Error(errorData.error || 'Error al crear paciente');
+       }
+-      return;
+-    }
+ 
+-    if (data?.[0]) {
+-      setPatients((current) => [data[0], ...current]);
++      const result = await response.json();
++      setPatients((current) => [result.patient, ...current]);
++      
++      // Limpiar el formulario
+       setFormData({
+         full_name: '',
+         diagnosis_summary: '',
+@@ -470,8 +472,14 @@ function Dashboard({ user, onSignOut }) {
+         birth_date: '',
+         gender: 'No especificado',
+         contact: '',
++        tumor_location: '',
++        tumor_stage: '',
++        molecular_markers: '',
+       });
+-      setMessage({ type: 'success', text: `Paciente creado correctamente: ${data[0].full_name}` });
++      
++      setMessage({ type: 'success', text: `Paciente creado correctamente: ${result.patient.full_name}` });
++    } catch (error) {
++      setMessage({ type: 'error', text: error.message || 'No se pudo crear el paciente.' });
+     }
+ 
+     setSavingPatient(false);
+@@ -483,18 +491,21 @@ function Dashboard({ user, onSignOut }) {
+       return;
+     }
+ 
+-    const { error: deleteError } = await supabase.from('patients').delete().eq('id', patient.id);
++    try {
++      const response = await fetch(`${API_URL}/patients/${patient.id}`, {
++        method: 'DELETE'
++      });
+ 
+-    if (deleteError) {
+-      setMessage({ type: 'error', text: deleteError.message || 'No se pudo eliminar el paciente.' });
+-      if (deleteError.status === 401 || deleteError.code === 'PGRST301') {
+-        supabase.auth.signOut();
++      if (!response.ok) {
++        const errorData = await response.json();
++        throw new Error(errorData.error || 'Error al eliminar paciente');
+       }
+-      return;
+-    }
+ 
+-    setPatients((current) => current.filter((item) => item.id !== patient.id));
+-    setMessage({ type: 'success', text: `Paciente eliminado: ${patient.full_name}` });
++      setPatients((current) => current.filter((item) => item.id !== patient.id));
++      setMessage({ type: 'success', text: `Paciente eliminado: ${patient.full_name}` });
++    } catch (error) {
++      setMessage({ type: 'error', text: error.message || 'No se pudo eliminar el paciente.' });
++    }
+   };
+   const handleEdit = (patient) => {
+   setEditingPatient(patient);
+diff --git a/apps/web/src/app/PatientDetail.jsx b/apps/web/src/app/PatientDetail.jsx
+index f024f1a..5f5def2 100644
+--- a/apps/web/src/app/PatientDetail.jsx
++++ b/apps/web/src/app/PatientDetail.jsx
+@@ -1,6 +1,7 @@
+ import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+ import { useNavigate, useParams } from 'react-router-dom';
+ import { supabase } from './supabaseClient';
++import { API_URL } from '../config';
+ 
+ const STORAGE_BUCKET = 'medical-history';
+ 

@@ -1,0 +1,22 @@
+﻿{
+  "patientData": {
+    "datos_generales": {
+      "nombre_completo": "Juan Carlos Ramírez",
+      "dni": "25.987.654",
+      "fecha_nacimiento": "1982-11-23",
+      "sexo": "Masculino",
+      "contacto": "+54 9 387 555-7890"
+    },
+    "historia_tumoral": {
+      "ubicacion": "Pulmón derecho, lóbulo superior",
+      "estadio": "IV (T2N3M1c)",
+      "marcadores_moleculares": {
+        "EGFR": "Negativo",
+        "ALK": "Negativo",
+        "PD_L1": "> 50%"
+      },
+      "diagnostico_resumen": "Adenocarcinoma de pulmón no microcítico con metástasis cerebrales y óseas."
+    }
+  },
+  "question": "¿Qué tratamiento recomienda para este paciente?"
+}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from './supabaseClient';
+import { API_URL } from '../config';
 
 const STORAGE_BUCKET = 'medical-history';
 

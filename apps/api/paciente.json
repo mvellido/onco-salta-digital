@@ -1,0 +1,18 @@
+﻿{
+  "datos_generales": {
+    "nombre_completo": "Ana María Pérez",
+    "dni": "30.123.456",
+    "fecha_nacimiento": "1975-06-15",
+    "sexo": "Femenino",
+    "contacto": "+54 9 387 555-1234"
+  },
+  "historia_tumoral": {
+    "ubicacion": "Mama izquierda, cuadrante superior externo",
+    "estadio": "IIA (T2N0M0)",
+    "marcadores_moleculares": {
+      "RE": "Positivo",
+      "HER2": "Negativo"
+    },
+    "diagnostico_resumen": "Carcinoma ductal infiltrante de mama izquierda. Estadio IIA."
+  }
+}
