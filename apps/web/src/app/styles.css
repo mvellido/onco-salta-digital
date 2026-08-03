@@ -293,9 +293,250 @@ button.ghost {
   color: #166534;
 }
 
+.turn-card__pill--completed {
+  background: #d1fae5;
+  color: #166534;
+}
+
 .turn-card__pill--cancelled {
   background: #fee2e2;
   color: #b91c1c;
+}
+
+.turn-card__details {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.turn-card__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.patient-detail {
+  max-width: 1100px;
+  margin: 2rem auto;
+  padding: 0 1rem 2rem;
+}
+
+.patient-detail--loading {
+  padding: 2rem;
+  text-align: center;
+  font-size: 1.05rem;
+  color: var(--text-muted);
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.detail-header h1 {
+  margin: 0;
+  font-size: clamp(1.75rem, 2vw, 2.2rem);
+}
+
+.detail-header p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.detail-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.detail-card,
+.timeline-card,
+.preview-panel {
+  background: var(--bg-surface);
+  border-radius: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+  padding: 1.5rem;
+}
+
+.detail-row {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-row span {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.detail-row strong {
+  font-size: 1rem;
+  color: var(--text-strong);
+}
+
+.timeline-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.timeline-filters {
+  display: grid;
+  gap: 1rem;
+  width: min(100%, 560px);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.event-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.event-card {
+  border-radius: 18px;
+  background: #f8fbff;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  padding: 1.2rem;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.event-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.event-card__date {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.event-card__meta {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.event-note {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.75;
+}
+
+.event-card__actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.attachment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.attachment-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.95rem 1rem;
+  background: #fff;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+}
+
+.attachment-thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.attachment-meta {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.attachment-name {
+  font-weight: 700;
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-type {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.attachment-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.preview-panel {
+  padding: 1.25rem;
+}
+
+.preview-media {
+  width: 100%;
+  min-height: 320px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: #fff;
+}
+
+.message {
+  padding: 1rem;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  margin-bottom: 1rem;
+}
+
+.message--success {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.message--error {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.file-field {
+  display: grid;
+  gap: 0.45rem;
 }
 
 @media (min-width: 900px) {

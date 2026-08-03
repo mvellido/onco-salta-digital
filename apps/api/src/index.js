@@ -36,6 +36,13 @@ const supabase = supabaseUrl && supabaseServiceRoleKey
 // Crear servidor Fastify
 const fastify = Fastify({ logger: true });
 
+// Habilitar CORS para todas las rutas
+fastify.register(cors, {
+  origin: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+});
+
 // Health check
 fastify.get('/health', async () => ({ status: 'ok' }));
 
@@ -208,11 +215,151 @@ fastify.post('/ia/consult', async (request, reply) => {
   }
 });
 
-// Habilitar CORS para todas las rutas
-fastify.register(cors, {
-  origin: true, // Permite cualquier origen (para desarrollo)
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+// GET /appointments - Listar turnos con información de paciente
+fastify.get('/appointments', async (request, reply) => {
+  if (!supabase) {
+    return reply.code(500).send({ error: 'Supabase no está configurado' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('appointments')
+      .select('id, patient_id, date, time, note, status, created_at, updated_at, patient:patients(full_name)')
+      .order('date', { ascending: true })
+      .order('time', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching appointments:', error);
+      return reply.code(500).send({ error: error.message });
+    }
+
+    const appointments = (data || []).map((item) => ({
+      ...item,
+      patientId: item.patient_id,
+      patientName: item.patient?.full_name || 'Paciente desconocido',
+    }));
+
+    return appointments;
+  } catch (err) {
+    console.error('Exception in GET /appointments:', err);
+    return reply.code(500).send({ error: err.message });
+  }
+});
+
+// POST /appointments - Crear turno
+fastify.post('/appointments', async (request, reply) => {
+  if (!supabase) {
+    return reply.code(500).send({ error: 'Supabase no está configurado' });
+  }
+
+  const { patient_id, date, time, note, status } = request.body || {};
+  if (!patient_id || !date || !time) {
+    return reply.code(400).send({ error: 'Se requiere patient_id, date y time para crear un turno' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('appointments')
+      .insert([{ patient_id, date, time, note: note || '', status: status || 'scheduled' }])
+      .select('id, patient_id, date, time, note, status, created_at, updated_at, patient:patients(full_name)');
+
+    if (error) {
+      console.error('Error creating appointment:', error);
+      return reply.code(500).send({ error: error.message });
+    }
+
+    const appointment = (data || [])[0] || {};
+    return reply.code(201).send({
+      ...appointment,
+      patientId: appointment.patient_id,
+      patientName: appointment.patient?.full_name || 'Paciente desconocido',
+    });
+  } catch (err) {
+    console.error('Exception in POST /appointments:', err);
+    return reply.code(500).send({ error: err.message });
+  }
+});
+
+// PATCH /appointments/:id - Actualizar turno
+fastify.patch('/appointments/:id', async (request, reply) => {
+  if (!supabase) {
+    return reply.code(500).send({ error: 'Supabase no está configurado' });
+  }
+
+  const { id } = request.params;
+  const { date, time, note, status, patient_id } = request.body || {};
+  const updates = {};
+
+  if (date !== undefined) updates.date = date;
+  if (time !== undefined) updates.time = time;
+  if (note !== undefined) updates.note = note;
+  if (status !== undefined) updates.status = status;
+  if (patient_id !== undefined) updates.patient_id = patient_id;
+
+  if (Object.keys(updates).length === 0) {
+    return reply.code(400).send({ error: 'Se requiere al menos un campo para actualizar' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('appointments')
+      .update(updates)
+      .eq('id', id)
+      .select('id, patient_id, date, time, note, status, created_at, updated_at, patient:patients(full_name)');
+
+    if (error) {
+      console.error('Error updating appointment:', error);
+      return reply.code(500).send({ error: error.message });
+    }
+
+    if (!data || data.length === 0) {
+      return reply.code(404).send({ error: 'Turno no encontrado' });
+    }
+
+    const appointment = data[0];
+    return reply.code(200).send({
+      ...appointment,
+      patientId: appointment.patient_id,
+      patientName: appointment.patient?.full_name || 'Paciente desconocido',
+    });
+  } catch (err) {
+    console.error('Exception in PATCH /appointments/:id:', err);
+    return reply.code(500).send({ error: err.message });
+  }
+});
+
+// DELETE /appointments/:id - Eliminar turno
+fastify.delete('/appointments/:id', async (request, reply) => {
+  if (!supabase) {
+    return reply.code(500).send({ error: 'Supabase no está configurado' });
+  }
+
+  const { id } = request.params;
+
+  try {
+    const { data, error } = await supabase
+      .from('appointments')
+      .delete()
+      .eq('id', id)
+      .select();
+
+    if (error) {
+      console.error('Error deleting appointment:', error);
+      return reply.code(500).send({ error: error.message });
+    }
+
+    if (!data || data.length === 0) {
+      return reply.code(404).send({ error: 'Turno no encontrado' });
+    }
+
+    return reply.code(200).send({
+      message: 'Turno eliminado correctamente',
+      deleted: data[0],
+    });
+  } catch (err) {
+    console.error('Exception in DELETE /appointments/:id:', err);
+    return reply.code(500).send({ error: err.message });
+  }
 });
 
 // PUT /patients/:id - Actualizar paciente

@@ -439,49 +439,61 @@ function PatientDetail({ user, initialPatient = null, initialEvents = null }) {
   };
 
   if (loading) {
-    return <div style={{ padding: 24 }}>Cargando historial clínico…</div>;
+    return <div className="patient-detail patient-detail--loading">Cargando historial clínico…</div>;
   }
 
   return (
-    <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: 1100, margin: '24px auto', padding: 24, background: '#f8fbff', borderRadius: 20 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+    <div className="patient-detail">
+      <div className="detail-header">
         <div>
-          <h1 style={{ marginBottom: 6 }}>Historial clínico</h1>
-          <p style={{ margin: 0, color: '#475569' }}>{patient?.full_name || 'Paciente'}</p>
+          <h1>Historial clínico</h1>
+          <p>{patient?.full_name || 'Paciente'}</p>
         </div>
-        <button type="button" onClick={() => navigate('/')} style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}>
+        <button type="button" onClick={() => navigate('/')} className="secondary" style={{ whiteSpace: 'nowrap' }}>
           Volver a pacientes
         </button>
       </div>
 
-      <div style={{ marginTop: 18, display: 'grid', gap: 16 }}>
-        <section style={{ background: '#fff', padding: 20, borderRadius: 16, boxShadow: '0 6px 20px rgba(15, 23, 42, 0.06)' }}>
-          <h2 style={{ marginTop: 0 }}>Datos generales</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-            <div><strong>Nombre:</strong> {patient?.full_name || '—'}</div>
-            <div><strong>Documento:</strong> {patient?.document_number || 'Sin registro'}</div>
-            <div><strong>Estado:</strong> {patient?.status || '—'}</div>
-            <div><strong>Diagnóstico:</strong> {patient?.diagnosis_summary || 'Sin diagnóstico'}</div>
+      <div className="detail-grid">
+        <section className="detail-card">
+          <h2>Datos generales</h2>
+          <div className="detail-row">
+            <strong>{patient?.full_name || '—'}</strong>
+            <span>Nombre completo</span>
+          </div>
+          <div className="detail-row">
+            <strong>{patient?.document_number || 'Sin registro'}</strong>
+            <span>Documento</span>
+          </div>
+          <div className="detail-row">
+            <strong>{patient?.status || '—'}</strong>
+            <span>Estado clínico</span>
+          </div>
+          <div className="detail-row">
+            <strong>{patient?.diagnosis_summary || 'Sin diagnóstico'}</strong>
+            <span>Diagnóstico</span>
           </div>
         </section>
 
-        <section style={{ background: '#fff', padding: 20, borderRadius: 16, boxShadow: '0 6px 20px rgba(15, 23, 42, 0.06)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <h2 style={{ margin: 0 }}>Línea de tiempo</h2>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'end' }}>
-              <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+        <section className="timeline-card">
+          <div className="timeline-toolbar">
+            <div>
+              <h2 style={{ margin: 0 }}>Línea de tiempo</h2>
+              <p style={{ margin: '0.5rem 0 0', color: 'var(--text-muted)' }}>Registros clínicos y adjuntos del paciente.</p>
+            </div>
+            <div className="timeline-filters">
+              <label>
                 Buscar por fecha o tipo
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Buscar por fecha o tipo"
-                  style={{ padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 10, minWidth: 220 }}
                 />
               </label>
-              <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+              <label>
                 Filtrar por tipo
-                <select value={filterType} onChange={(e) => setFilterType(e.target.value)} style={{ padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 10 }}>
+                <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
                   <option value="">Todos</option>
                   {eventTypes.map((type) => (
                     <option key={type} value={type}>{type}</option>
@@ -492,63 +504,70 @@ function PatientDetail({ user, initialPatient = null, initialEvents = null }) {
           </div>
 
           {message.text && message.type ? (
-            <div style={{ marginTop: 12, marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: message.type === 'success' ? '#f0fdf4' : '#fef2f2', color: message.type === 'success' ? '#166534' : '#b91c1c' }}>
+            <div className={`message message--${message.type === 'success' ? 'success' : 'error'}`}>
               {message.text}
             </div>
           ) : null}
 
           {previewAttachment ? (
-            <div style={{ marginTop: 12, border: '1px solid #dbeafe', borderRadius: 12, padding: 12, background: '#f8fbff' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                <strong>Vista previa: {previewAttachment.file_name}</strong>
-                <button type="button" onClick={() => { setPreviewAttachment(null); setPreviewUrl(''); }} style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}>
+            <div className="preview-panel">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                <div>
+                  <strong>Vista previa</strong>
+                  <p style={{ margin: '4px 0 0', color: 'var(--text-muted)' }}>{previewAttachment.file_name}</p>
+                </div>
+                <button type="button" onClick={() => { setPreviewAttachment(null); setPreviewUrl(''); }} className="secondary">
                   Cerrar
                 </button>
               </div>
               {previewAttachment.content_type?.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg)$/i.test(previewAttachment.file_name || '') ? (
-                <img src={previewUrl} alt={previewAttachment.file_name} style={{ maxWidth: '100%', maxHeight: 320, objectFit: 'contain', borderRadius: 8 }} />
+                <img src={previewUrl} alt={previewAttachment.file_name} className="preview-media" />
               ) : (
-                <iframe src={previewUrl} title={previewAttachment.file_name} style={{ width: '100%', minHeight: 360, border: '1px solid #e2e8f0', borderRadius: 8 }} />
+                <iframe src={previewUrl} title={previewAttachment.file_name} className="preview-media" />
               )}
             </div>
           ) : null}
 
           {filteredEvents.length === 0 ? (
-            <p style={{ color: '#64748b' }}>Sin eventos registrados.</p>
+            <p style={{ color: 'var(--text-muted)' }}>Sin eventos registrados.</p>
           ) : (
-            <div style={{ display: 'grid', gap: 12 }}>
+            <div className="event-list">
               {filteredEvents.map((event) => (
-                <div key={event.id} style={{ borderLeft: '3px solid #2563eb', paddingLeft: 12, background: '#f8fafc', padding: 12, borderRadius: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                <div key={event.id} className="event-card">
+                  <div className="event-card__header">
                     <strong>{event.event_type}</strong>
-                    <span style={{ color: '#64748b' }}>{event.event_date}</span>
+                    <span className="event-card__date">{event.event_date}</span>
                   </div>
-                  <p style={{ margin: '8px 0 4px' }}>{event.description}</p>
-                  {event.outcome_note ? <p style={{ margin: 0, color: '#475569' }}><em>Nota:</em> {event.outcome_note}</p> : null}
+                  <div className="event-card__meta">
+                    <p className="event-note">{event.description}</p>
+                    {event.outcome_note ? <p className="event-note"><em>Nota:</em> {event.outcome_note}</p> : null}
+                  </div>
 
                   {(attachmentsByEvent[event.id] || []).length > 0 ? (
-                    <div style={{ marginTop: 8 }}>
-                      <strong>Adjuntos:</strong>
-                      <ul style={{ margin: '6px 0 0 16px' }}>
+                    <div>
+                      <strong>Adjuntos</strong>
+                      <ul className="attachment-list">
                         {(attachmentsByEvent[event.id] || []).map((attachment) => (
-                          <li key={attachment.id} style={{ marginBottom: 6 }}>
-                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                              {thumbnailUrls[attachment.id] ? (
-                                <img
-                                  src={thumbnailUrls[attachment.id]}
-                                  alt={attachment.file_name}
-                                  style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 10, border: '1px solid #e2e8f0' }}
-                                />
-                              ) : null}
-                              <button type="button" onClick={() => handleDownload(attachment)} style={{ background: 'none', border: 'none', color: '#2563eb', padding: 0, cursor: 'pointer' }}>
-                                {attachment.file_name}
+                          <li key={attachment.id} className="attachment-item">
+                            {thumbnailUrls[attachment.id] ? (
+                              <img src={thumbnailUrls[attachment.id]} alt={attachment.file_name} className="attachment-thumb" />
+                            ) : (
+                              <div style={{ width: 56, height: 56, borderRadius: 12, background: '#eef2ff' }} />
+                            )}
+                            <div className="attachment-meta">
+                              <span className="attachment-name">{attachment.file_name}</span>
+                              <span className="attachment-type">{attachment.content_type || 'Archivo'}</span>
+                            </div>
+                            <div className="attachment-actions">
+                              <button type="button" onClick={() => handleDownload(attachment)} className="secondary">
+                                Descargar
                               </button>
                               {isPreviewableAttachment(attachment) ? (
-                                <button type="button" onClick={() => handlePreviewAttachment(attachment)} style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 8, padding: '2px 8px', cursor: 'pointer' }}>
+                                <button type="button" onClick={() => handlePreviewAttachment(attachment)} className="secondary">
                                   Ver
                                 </button>
                               ) : null}
-                              <button type="button" onClick={() => handleDeleteAttachment(event.id, attachment)} style={{ background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 8, padding: '2px 8px', cursor: 'pointer' }}>
+                              <button type="button" onClick={() => handleDeleteAttachment(event.id, attachment)} className="ghost">
                                 Eliminar
                               </button>
                             </div>
@@ -558,8 +577,8 @@ function PatientDetail({ user, initialPatient = null, initialEvents = null }) {
                     </div>
                   ) : null}
 
-                  <div style={{ marginTop: 10 }}>
-                    <button type="button" onClick={() => handleEdit(event)} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer' }}>
+                  <div className="event-card__actions">
+                    <button type="button" onClick={() => handleEdit(event)} className="secondary">
                       Editar
                     </button>
                   </div>
@@ -569,7 +588,7 @@ function PatientDetail({ user, initialPatient = null, initialEvents = null }) {
           )}
         </section>
 
-        <section style={{ background: '#fff', padding: 20, borderRadius: 16, boxShadow: '0 6px 20px rgba(15, 23, 42, 0.06)' }}>
+        <section className="detail-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <h2 style={{ margin: 0 }}>{editingEventId ? 'Editar evento' : 'Agregar evento'}</h2>
             {editingEventId ? (

@@ -310,7 +310,10 @@ function Dashboard({ user, onSignOut }) {
   const [turns, setTurns] = useState([]);
   const [turnForm, setTurnForm] = useState({ patientId: '', date: '', time: '', note: '' });
   const [turnSaving, setTurnSaving] = useState(false);
+  const [editingTurnId, setEditingTurnId] = useState(null);
   const [turnsMessage, setTurnsMessage] = useState({ type: '', text: '' });
+  const [turnsFilterStatus, setTurnsFilterStatus] = useState('all');
+  const [turnsFilterPatient, setTurnsFilterPatient] = useState('');
   const [iaPatientId, setIaPatientId] = useState('');
   const [iaQuestion, setIaQuestion] = useState('');
   const [iaAnswer, setIaAnswer] = useState('');
@@ -363,27 +366,40 @@ function Dashboard({ user, onSignOut }) {
     setLoadingPatients(false);
   }, []);
 
-  const loadTurns = useCallback(() => {
+  const loadTurns = useCallback(async () => {
     try {
-      const stored = window.localStorage.getItem('onco-salta-turns');
-      if (stored) {
-        setTurns(JSON.parse(stored));
+      const response = await fetch(`${API_URL}/appointments`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al obtener turnos');
       }
+      const data = await response.json();
+      setTurns(data || []);
     } catch (error) {
-      console.warn('No se pudieron cargar los turnos locales.', error);
+      console.warn('No se pudieron cargar los turnos desde el backend.', error);
+      setTurns([]);
+      setTurnsMessage({ type: 'error', text: 'No se pudieron cargar los turnos desde el servidor.' });
     }
   }, []);
 
-  const persistTurns = useCallback((nextTurns) => {
-    setTurns(nextTurns);
-    try {
-      window.localStorage.setItem('onco-salta-turns', JSON.stringify(nextTurns));
-    } catch (error) {
-      console.warn('No se pudieron guardar los turnos locales.', error);
-    }
-  }, []);
+  const resetTurnForm = () => {
+    setTurnForm({ patientId: '', date: '', time: '', note: '' });
+    setEditingTurnId(null);
+    setTurnSaving(false);
+  };
 
-  const handleTurnSubmit = (event) => {
+  const handleEditTurn = (turn) => {
+    setTurnForm({
+      patientId: turn.patientId,
+      date: turn.date,
+      time: turn.time,
+      note: turn.note,
+    });
+    setEditingTurnId(turn.id);
+    setTurnsMessage({ type: '', text: '' });
+  };
+
+  const handleTurnSubmit = async (event) => {
     event.preventDefault();
     setTurnsMessage({ type: '', text: '' });
 
@@ -399,33 +415,93 @@ function Dashboard({ user, onSignOut }) {
     }
 
     setTurnSaving(true);
-    const nextTurns = [
-      ...turns,
-      {
-        id: `${Date.now()}-${selectedPatient.id}`,
-        patientId: selectedPatient.id,
-        patientName: selectedPatient.full_name,
+
+    try {
+      const payload = {
+        patient_id: selectedPatient.id,
         date: turnForm.date,
         time: turnForm.time,
         note: turnForm.note,
-        status: 'scheduled',
-      },
-    ];
+        status: editingTurnId ? undefined : 'scheduled',
+      };
 
-    persistTurns(nextTurns);
-    setTurnsMessage({ type: 'success', text: 'Turno agregado correctamente.' });
-    setTurnForm({ patientId: '', date: '', time: '', note: '' });
-    setTurnSaving(false);
+      const response = await fetch(
+        `${API_URL}/appointments${editingTurnId ? `/${editingTurnId}` : ''}`,
+        {
+          method: editingTurnId ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Error guardando el turno');
+      }
+
+      if (editingTurnId) {
+        setTurns((current) => current.map((item) => (item.id === editingTurnId ? result : item)));
+        setTurnsMessage({ type: 'success', text: 'Turno actualizado correctamente.' });
+        resetTurnForm();
+      } else {
+        setTurns((current) => [...current, result]);
+        setTurnsMessage({ type: 'success', text: 'Turno agregado correctamente.' });
+        setTurnForm({ patientId: '', date: '', time: '', note: '' });
+      }
+    } catch (error) {
+      console.error('Error saving appointment:', error);
+      setTurnsMessage({ type: 'error', text: error.message || 'Error guardando el turno.' });
+    } finally {
+      setTurnSaving(false);
+    }
   };
 
-  const handleUpdateTurnStatus = (turnId, status) => {
-    const nextTurns = turns.map((item) => (item.id === turnId ? { ...item, status } : item));
-    persistTurns(nextTurns);
+  const handleUpdateTurnStatus = async (turnId, status) => {
+    setTurnsMessage({ type: '', text: '' });
+
+    try {
+      const response = await fetch(`${API_URL}/appointments/${turnId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Error actualizando estado del turno');
+      }
+
+      setTurns((current) => current.map((item) => (item.id === turnId ? result : item)));
+      const statusText = status === 'confirmed' ? 'confirmado' : status === 'completed' ? 'completado' : 'cancelado';
+      setTurnsMessage({ type: 'success', text: `Turno ${statusText} correctamente.` });
+    } catch (error) {
+      console.error('Error updating appointment status:', error);
+      setTurnsMessage({ type: 'error', text: error.message || 'No se pudo actualizar el estado del turno.' });
+    }
   };
 
-  const handleDeleteTurn = (turnId) => {
-    const nextTurns = turns.filter((item) => item.id !== turnId);
-    persistTurns(nextTurns);
+  const handleDeleteTurn = async (turnId) => {
+    setTurnsMessage({ type: '', text: '' });
+
+    try {
+      const response = await fetch(`${API_URL}/appointments/${turnId}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Error eliminando el turno');
+      }
+
+      setTurns((current) => current.filter((item) => item.id !== turnId));
+      if (editingTurnId === turnId) {
+        resetTurnForm();
+      }
+      setTurnsMessage({ type: 'success', text: result.message || 'Turno eliminado correctamente.' });
+    } catch (error) {
+      console.error('Error deleting appointment:', error);
+      setTurnsMessage({ type: 'error', text: error.message || 'No se pudo eliminar el turno.' });
+    }
   };
 
   const handleIaSubmit = async (event) => {
@@ -472,6 +548,24 @@ function Dashboard({ user, onSignOut }) {
   const sortedTurns = useMemo(() => {
     return [...turns].sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
   }, [turns]);
+
+  const filteredTurns = useMemo(() => {
+    return sortedTurns.filter((turn) => {
+      const matchesStatus = turnsFilterStatus === 'all' || turn.status === turnsFilterStatus;
+      const matchesPatient = !turnsFilterPatient || turn.patientId === turnsFilterPatient;
+      return matchesStatus && matchesPatient;
+    });
+  }, [sortedTurns, turnsFilterStatus, turnsFilterPatient]);
+
+  const turnCounters = useMemo(() => {
+    return sortedTurns.reduce(
+      (counters, turn) => {
+        counters[turn.status] = (counters[turn.status] || 0) + 1;
+        return counters;
+      },
+      { scheduled: 0, confirmed: 0, completed: 0, cancelled: 0 }
+    );
+  }, [sortedTurns]);
 
   const upcomingTurns = useMemo(() => sortedTurns.filter((item) => item.status === 'scheduled' || item.status === 'confirmed'), [sortedTurns]);
   const completedTurns = useMemo(() => sortedTurns.filter((item) => item.status === 'completed'), [sortedTurns]);
@@ -1042,7 +1136,37 @@ function Dashboard({ user, onSignOut }) {
                 </div>
               ) : null}
 
+              <div className="turns-overview" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
+                <div className="turns-counter">
+                  <span>Agendados</span>
+                  <strong>{turnCounters.scheduled}</strong>
+                </div>
+                <div className="turns-counter">
+                  <span>Confirmados</span>
+                  <strong>{turnCounters.confirmed}</strong>
+                </div>
+                <div className="turns-counter">
+                  <span>Completados</span>
+                  <strong>{turnCounters.completed}</strong>
+                </div>
+                <div className="turns-counter">
+                  <span>Cancelados</span>
+                  <strong>{turnCounters.cancelled}</strong>
+                </div>
+              </div>
+
               <form onSubmit={handleTurnSubmit} className="form-grid">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, width: '100%' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{editingTurnId ? 'Editar turno' : 'Nuevo turno'}</h3>
+                    <p style={{ margin: '8px 0 0', color: 'var(--text-muted)', fontSize: 14 }}>{editingTurnId ? 'Modificá los datos y guardá los cambios.' : 'Cargá un nuevo turno en la agenda.'}</p>
+                  </div>
+                  {editingTurnId ? (
+                    <button type="button" className="secondary" onClick={resetTurnForm}>
+                      Cancelar edición
+                    </button>
+                  ) : null}
+                </div>
                 <label>
                   Paciente
                   <select value={turnForm.patientId} onChange={(e) => setTurnForm({ ...turnForm, patientId: e.target.value })}>
@@ -1065,19 +1189,42 @@ function Dashboard({ user, onSignOut }) {
                   <input type="text" placeholder="Ej. Control quimioterapia" value={turnForm.note} onChange={(e) => setTurnForm({ ...turnForm, note: e.target.value })} />
                 </label>
                 <button type="submit" className="primary" disabled={turnSaving || !turnForm.patientId || !turnForm.date || !turnForm.time}>
-                  {turnSaving ? 'Guardando...' : 'Agregar turno'}
+                  {turnSaving ? 'Guardando...' : editingTurnId ? 'Guardar cambios' : 'Agregar turno'}
                 </button>
               </form>
             </section>
 
             <section className="section-card">
+              <div className="form-grid" style={{ marginBottom: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', alignItems: 'end' }}>
+                <label>
+                  Filtrar por estado
+                  <select value={turnsFilterStatus} onChange={(e) => setTurnsFilterStatus(e.target.value)}>
+                    <option value="all">Todos</option>
+                    <option value="scheduled">Agendados</option>
+                    <option value="confirmed">Confirmados</option>
+                    <option value="completed">Completados</option>
+                    <option value="cancelled">Cancelados</option>
+                  </select>
+                </label>
+                <label>
+                  Filtrar por paciente
+                  <select value={turnsFilterPatient} onChange={(e) => setTurnsFilterPatient(e.target.value)}>
+                    <option value="">Todos los pacientes</option>
+                    {patients.map((p) => (
+                      <option key={p.id} value={p.id}>{p.full_name}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
               <h2>Agenda</h2>
               <div className="turns-overview">
-                {sortedTurns.length === 0 ? (
-                  <p style={{ color: 'var(--text-muted)' }}>No hay turnos agendados aún.</p>
+                {filteredTurns.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)' }}>
+                    {turns.length === 0 ? 'No hay turnos agendados aún.' : 'No hay turnos que coincidan con el filtro seleccionado.'}
+                  </p>
                 ) : (
                   <ul className="turns-list">
-                    {sortedTurns.map((turn) => (
+                    {filteredTurns.map((turn) => (
                       <li key={turn.id} className="turn-card">
                         <div className="turn-card__header">
                           <div>
@@ -1088,12 +1235,24 @@ function Dashboard({ user, onSignOut }) {
                             {turn.status === 'scheduled' ? 'Agendado' : turn.status === 'confirmed' ? 'Confirmado' : turn.status === 'completed' ? 'Completado' : 'Cancelado'}
                           </span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                        <div className="turn-card__details">
                           <span>{turn.date} · {turn.time}</span>
+                          <span>{turn.status === 'confirmed' ? 'Confirmado' : turn.status === 'completed' ? 'Completado' : turn.status === 'cancelled' ? 'Cancelado' : 'Programado'}</span>
+                        </div>
+                        <div className="turn-card__footer">
+                          <button type="button" className="secondary" onClick={() => handleEditTurn(turn)}>
+                            Editar
+                          </button>
                           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            <button type="button" className="secondary" onClick={() => handleUpdateTurnStatus(turn.id, 'confirmed')}>Confirmar</button>
-                            <button type="button" className="secondary" onClick={() => handleUpdateTurnStatus(turn.id, 'completed')}>Completar</button>
-                            <button type="button" className="secondary" onClick={() => handleUpdateTurnStatus(turn.id, 'cancelled')}>Cancelar</button>
+                            {turn.status === 'scheduled' && (
+                              <button type="button" className="secondary" onClick={() => handleUpdateTurnStatus(turn.id, 'confirmed')}>Confirmar</button>
+                            )}
+                            {(turn.status === 'scheduled' || turn.status === 'confirmed') && (
+                              <button type="button" className="secondary" onClick={() => handleUpdateTurnStatus(turn.id, 'completed')}>Completar</button>
+                            )}
+                            {turn.status !== 'cancelled' && turn.status !== 'completed' && (
+                              <button type="button" className="secondary" onClick={() => handleUpdateTurnStatus(turn.id, 'cancelled')}>Cancelar</button>
+                            )}
                             <button type="button" className="ghost" onClick={() => handleDeleteTurn(turn.id)}>Eliminar</button>
                           </div>
                         </div>
