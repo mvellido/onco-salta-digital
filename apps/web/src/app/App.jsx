@@ -223,11 +223,11 @@ function AuthPage({ onSignIn }) {
       <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 10 }}>
         <label>
           Correo electrónico
-          <input aria-label="Correo electrónico" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input aria-label="Correo electrónico" autoComplete="username" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </label>
         <label>
           Contraseña
-          <input aria-label="Contraseña" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <input aria-label="Contraseña" autoComplete="current-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </label>
 
         {isSignUp ? (
@@ -383,10 +383,20 @@ function Dashboard({ user, onSignOut }) {
       : 'http://localhost';
     const requestUrl = API_URL ? `${API_URL}${normalizedPath}` : `${fallbackBaseUrl}${normalizedPath}`;
 
-    return fetch(requestUrl, {
+    const response = await fetch(requestUrl, {
       ...options,
       headers,
     });
+
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('text/html')) {
+      const configHint = API_URL
+        ? `Revisa VITE_API_URL (${API_URL}) y asegurate de que apunte al backend API.`
+        : 'Definí VITE_API_URL para Preview/Production apuntando al backend API.';
+      throw new Error(`La API devolvió HTML en lugar de JSON para ${normalizedPath}. ${configHint}`);
+    }
+
+    return response;
   }, []);
 
   // Pacientes filtrados por búsqueda y estado
