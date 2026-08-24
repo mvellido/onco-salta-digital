@@ -13,6 +13,11 @@ build/
 # Ignore logs
 *.log
 
+# Keep build context minimal
+coverage/
+Dockerfile*
+.dockerignore
+
 # Ignore caches
 .vscode/
 .idea/

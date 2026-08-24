@@ -26,3 +26,14 @@
 - Request AI recommendations and confirm a contextual response appears.
 - Reconcile a billing batch and review the resulting report.
 - Verify that role-based access blocks unauthorized users.
+
+## Validation run log (2026-08-24)
+- Frontend automated checks passed with Vitest: 3 files, 5 tests.
+- AI UI flow implemented and connected to `/ai/ingest`, `/ai/recommendations`, and `/ai/chat`.
+- Billing report, billing record creation, and reconciliation endpoints wired end-to-end in API and web UI.
+- Secretariat module now includes appointment conflict detection plus notification and role-permission endpoints.
+
+## Follow-up fixes and pending items
+- Mandatory 2FA enforcement remains pending by product decision and should be enabled before production release.
+- Full E2E execution against a live Supabase project is still required to validate RLS policies and storage workflows.
+- React Router v7 future-flag warnings appear in tests; no functional regression was observed, but migration should be scheduled.

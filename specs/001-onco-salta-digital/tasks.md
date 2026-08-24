@@ -20,12 +20,12 @@
 
 **Purpose**: Establish the shared infrastructure that all user stories depend on.
 
-- [ ] T006 Create Supabase migrations for patients, treatments, tumors, documents, appointments, billing, roles, and audit logs in db/supabase/migrations/
+- [X] T006 Create Supabase migrations for patients, treatments, tumors, documents, appointments, billing, roles, and audit logs in db/supabase/migrations/
 - [ ] T007 Implement authentication, session handling, and mandatory 2FA enforcement in apps/api/src/infra/ and apps/web/src/lib/
-- [ ] T008 [P] Implement role-based access control and RLS-aware repository helpers in apps/api/src/modules/shared/
-- [ ] T009 [P] Implement audit logging and sensitive-action middleware in apps/api/src/modules/shared/
-- [ ] T010 [P] Implement document storage integration with Supabase Storage in apps/api/src/modules/shared/
-- [ ] T011 Create shared API validation schemas and error handling utilities in apps/api/src/infra/
+- [X] T008 [P] Implement role-based access control and RLS-aware repository helpers in apps/api/src/modules/shared/
+- [X] T009 [P] Implement audit logging and sensitive-action middleware in apps/api/src/modules/shared/
+- [X] T010 [P] Implement document storage integration with Supabase Storage in apps/api/src/modules/shared/
+- [X] T011 Create shared API validation schemas and error handling utilities in apps/api/src/infra/
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel.
 
@@ -39,12 +39,12 @@
 
 ### Implementation for User Story 1
 
-- [ ] T012 [P] [US1] Create patient and clinical data models and validation schemas in apps/api/src/modules/patients/
-- [ ] T013 [P] [US1] Create patient profile, treatment, tumor, and attachment UI components in apps/web/src/features/patients/
-- [ ] T014 [US1] Implement patient CRUD endpoints and timeline aggregation in apps/api/src/modules/patients/
-- [ ] T015 [US1] Implement patient repository and Supabase data access integration in apps/api/src/modules/patients/
+- [X] T012 [P] [US1] Create patient and clinical data models and validation schemas in apps/api/src/modules/patients/
+- [X] T013 [P] [US1] Create patient profile, treatment, tumor, and attachment UI components in apps/web/src/features/patients/
+- [X] T014 [US1] Implement patient CRUD endpoints and timeline aggregation in apps/api/src/modules/patients/
+- [X] T015 [US1] Implement patient repository and Supabase data access integration in apps/api/src/modules/patients/
 - [X] T016 [US1] Implement patient record view, document attachment flow, and case timeline visualization in apps/web/src/app/ and apps/web/src/features/patients/
-- [ ] T017 [US1] Add keyboard-first clinical navigation and shortcut support in apps/web/src/components/
+- [X] T017 [US1] Add keyboard-first clinical navigation and shortcut support in apps/web/src/components/
 
 **Checkpoint**: User Story 1 should be fully functional and independently testable.
 
@@ -58,11 +58,11 @@
 
 ### Implementation for User Story 2
 
-- [ ] T018 [P] [US2] Create AI ingestion and RAG service interfaces in apps/api/src/modules/ai/
-- [ ] T019 [US2] Implement Gemini OCR ingestion and document parsing workflow in apps/api/src/modules/ai/
-- [ ] T020 [US2] Implement therapeutic recommendation and chat endpoints with patient context assembly in apps/api/src/modules/ai/
-- [ ] T021 [P] [US2] Create AI assistant UI, document upload flow, and chat panel in apps/web/src/features/ai/
-- [ ] T022 [US2] Integrate AI workflows with patient records and audit logging in apps/api/src/modules/ai/ and apps/api/src/modules/shared/
+- [X] T018 [P] [US2] Create AI ingestion and RAG service interfaces in apps/api/src/modules/ai/
+- [X] T019 [US2] Implement Gemini OCR ingestion and document parsing workflow in apps/api/src/modules/ai/
+- [X] T020 [US2] Implement therapeutic recommendation and chat endpoints with patient context assembly in apps/api/src/modules/ai/
+- [X] T021 [P] [US2] Create AI assistant UI, document upload flow, and chat panel in apps/web/src/features/ai/
+- [X] T022 [US2] Integrate AI workflows with patient records and audit logging in apps/api/src/modules/ai/ and apps/api/src/modules/shared/
 
 **Checkpoint**: User Stories 1 and 2 should both work independently.
 
@@ -76,10 +76,10 @@
 
 ### Implementation for User Story 3
 
-- [ ] T023 [P] [US3] Create billing domain models and reconciliation schemas in apps/api/src/modules/billing/
-- [ ] T024 [US3] Implement reconciliation engine and report aggregation in apps/api/src/modules/billing/
-- [ ] T025 [P] [US3] Create finance dashboard and account-state UI in apps/web/src/features/billing/
-- [ ] T026 [US3] Wire billing APIs, report generation, and state-of-account views in apps/web/src/features/billing/ and apps/api/src/modules/billing/
+- [X] T023 [P] [US3] Create billing domain models and reconciliation schemas in apps/api/src/modules/billing/
+- [X] T024 [US3] Implement reconciliation engine and report aggregation in apps/api/src/modules/billing/
+- [X] T025 [P] [US3] Create finance dashboard and account-state UI in apps/web/src/features/billing/
+- [X] T026 [US3] Wire billing APIs, report generation, and state-of-account views in apps/web/src/features/billing/ and apps/api/src/modules/billing/
 
 **Checkpoint**: User Story 3 should be independently functional.
 
@@ -93,11 +93,11 @@
 
 ### Implementation for User Story 4
 
-- [ ] T027 [P] [US4] Create appointment and role-permission models in apps/api/src/modules/secretary/
-- [ ] T028 [US4] Implement agenda and appointment management endpoints in apps/api/src/modules/secretary/
-- [ ] T029 [US4] Implement notification dispatch and permission administration in apps/api/src/modules/secretary/
-- [ ] T030 [P] [US4] Create secretary UI for agenda, scheduling, notifications, and user management in apps/web/src/features/secretary/
-- [ ] T031 [US4] Add scheduling conflict detection and audit logging in apps/api/src/modules/secretary/
+- [X] T027 [P] [US4] Create appointment and role-permission models in apps/api/src/modules/secretary/
+- [X] T028 [US4] Implement agenda and appointment management endpoints in apps/api/src/modules/secretary/
+- [X] T029 [US4] Implement notification dispatch and permission administration in apps/api/src/modules/secretary/
+- [X] T030 [P] [US4] Create secretary UI for agenda, scheduling, notifications, and user management in apps/web/src/features/secretary/
+- [X] T031 [US4] Add scheduling conflict detection and audit logging in apps/api/src/modules/secretary/
 
 **Checkpoint**: All user stories should now be independently functional.
 
@@ -107,10 +107,10 @@
 
 **Purpose**: Improve quality, security, and deployment readiness across all modules.
 
-- [ ] T032 [P] Update deployment configuration for Vercel and Render in apps/web/, apps/api/, and db/supabase/
-- [ ] T033 [P] Harden security settings, secrets handling, and RLS policies in apps/api/src/infra/ and db/supabase/migrations/
-- [ ] T034 [P] Review accessibility, keyboard navigation, and clinical usability across the web app in apps/web/src/
-- [ ] T035 Run quickstart validation and document any follow-up fixes in specs/001-onco-salta-digital/quickstart.md
+- [X] T032 [P] Update deployment configuration for Vercel and Render in apps/web/, apps/api/, and db/supabase/
+- [X] T033 [P] Harden security settings, secrets handling, and RLS policies in apps/api/src/infra/ and db/supabase/migrations/
+- [X] T034 [P] Review accessibility, keyboard navigation, and clinical usability across the web app in apps/web/src/
+- [X] T035 Run quickstart validation and document any follow-up fixes in specs/001-onco-salta-digital/quickstart.md
 
 ---
 

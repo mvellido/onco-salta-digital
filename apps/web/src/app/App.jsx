@@ -3,6 +3,12 @@ import { BrowserRouter, Navigate, Route, Routes, useNavigate, Link } from 'react
 import PatientDetail from './PatientDetail';
 import { supabase } from './supabaseClient';
 import { API_URL } from '../config';
+import { useClinicalShortcuts } from '../components/useClinicalShortcuts';
+import PatientRegistrationForm from '../features/patients/PatientRegistrationForm';
+import PatientsTable from '../features/patients/PatientsTable';
+import AIAssistantPanel from '../features/ai/AIAssistantPanel';
+import BillingDashboard from '../features/billing/BillingDashboard';
+import SecretaryAgenda from '../features/secretary/SecretaryAgenda';
 import './styles.css';
 
 const doctorInviteCode = import.meta.env.VITE_DOCTOR_INVITE_CODE || '';
@@ -314,15 +320,75 @@ function Dashboard({ user, onSignOut }) {
   const [turnsMessage, setTurnsMessage] = useState({ type: '', text: '' });
   const [turnsFilterStatus, setTurnsFilterStatus] = useState('all');
   const [turnsFilterPatient, setTurnsFilterPatient] = useState('');
+  const [notificationForm, setNotificationForm] = useState({ channel: 'in-app', recipients: '', message: '' });
+  const [notificationLoading, setNotificationLoading] = useState(false);
+  const [permissionForm, setPermissionForm] = useState({ role: 'secretary', permissions: 'appointments:read, appointments:write, notifications:send' });
+  const [permissionsState, setPermissionsState] = useState({});
+  const [permissionsLoading, setPermissionsLoading] = useState(false);
   const [iaPatientId, setIaPatientId] = useState('');
   const [iaQuestion, setIaQuestion] = useState('');
   const [iaAnswer, setIaAnswer] = useState('');
   const [iaLoading, setIaLoading] = useState(false);
   const [iaError, setIaError] = useState('');
+  const [iaIngestLoading, setIaIngestLoading] = useState(false);
+  const [iaIngestResult, setIaIngestResult] = useState('');
+  const [iaDocumentReference, setIaDocumentReference] = useState('');
+  const [iaDocumentRawText, setIaDocumentRawText] = useState('');
+  const [billingReport, setBillingReport] = useState(null);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [billingMessage, setBillingMessage] = useState({ type: '', text: '' });
+  const [billingForm, setBillingForm] = useState({
+    patient_id: '',
+    invoice_number: '',
+    amount: '',
+    status: 'pending',
+    notes: '',
+  });
+  const [reconForm, setReconForm] = useState({ expectedTotal: '', recordsJson: '' });
+  const [reconResult, setReconResult] = useState(null);
+  const [reconLoading, setReconLoading] = useState(false);
   const [activeSection, setActiveSection] = useState('pacientes');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('todos');
   const formIsValid = useMemo(() => formData.full_name.trim().length > 0, [formData.full_name]);
+
+  const parseMolecularMarkers = (value) => {
+    if (!value || typeof value !== 'string' || !value.trim()) {
+      return {};
+    }
+
+    try {
+      return JSON.parse(value);
+    } catch {
+      return { nota: value.trim() };
+    }
+  };
+
+  const apiFetch = useCallback(async (path, options = {}) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const headers = new Headers(options.headers || {});
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+
+    if (options.body && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
+
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    const fallbackBaseUrl = typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : 'http://localhost';
+    const requestUrl = API_URL ? `${API_URL}${normalizedPath}` : `${fallbackBaseUrl}${normalizedPath}`;
+
+    return fetch(requestUrl, {
+      ...options,
+      headers,
+    });
+  }, []);
+
   // Pacientes filtrados por búsqueda y estado
   const filteredPatients = useMemo(() => {
     return patients.filter((patient) => {
@@ -348,7 +414,7 @@ function Dashboard({ user, onSignOut }) {
     setMessage((current) => (current.type === 'error' ? { type: '', text: '' } : current));
 
     try {
-      const response = await fetch(`${API_URL}/patients`);
+      const response = await apiFetch('/patients');
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Error al obtener pacientes');
@@ -364,11 +430,11 @@ function Dashboard({ user, onSignOut }) {
     }
 
     setLoadingPatients(false);
-  }, []);
+  }, [apiFetch]);
 
   const loadTurns = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/appointments`);
+      const response = await apiFetch('/appointments');
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Error al obtener turnos');
@@ -380,7 +446,27 @@ function Dashboard({ user, onSignOut }) {
       setTurns([]);
       setTurnsMessage({ type: 'error', text: 'No se pudieron cargar los turnos desde el servidor.' });
     }
-  }, []);
+  }, [apiFetch]);
+
+  const loadBillingReport = useCallback(async () => {
+    setBillingLoading(true);
+    setBillingMessage((current) => (current.type === 'error' ? { type: '', text: '' } : current));
+
+    try {
+      const response = await apiFetch('/billing/reports');
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'No se pudo cargar el reporte financiero');
+      }
+
+      setBillingReport(result);
+    } catch (error) {
+      setBillingReport(null);
+      setBillingMessage({ type: 'error', text: error.message || 'No se pudo cargar el reporte financiero.' });
+    } finally {
+      setBillingLoading(false);
+    }
+  }, [apiFetch]);
 
   const resetTurnForm = () => {
     setTurnForm({ patientId: '', date: '', time: '', note: '' });
@@ -425,11 +511,10 @@ function Dashboard({ user, onSignOut }) {
         status: editingTurnId ? undefined : 'scheduled',
       };
 
-      const response = await fetch(
-        `${API_URL}/appointments${editingTurnId ? `/${editingTurnId}` : ''}`,
+      const response = await apiFetch(
+        `/appointments${editingTurnId ? `/${editingTurnId}` : ''}`,
         {
           method: editingTurnId ? 'PATCH' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         }
       );
@@ -460,9 +545,8 @@ function Dashboard({ user, onSignOut }) {
     setTurnsMessage({ type: '', text: '' });
 
     try {
-      const response = await fetch(`${API_URL}/appointments/${turnId}`, {
+      const response = await apiFetch(`/appointments/${turnId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
 
@@ -484,7 +568,7 @@ function Dashboard({ user, onSignOut }) {
     setTurnsMessage({ type: '', text: '' });
 
     try {
-      const response = await fetch(`${API_URL}/appointments/${turnId}`, {
+      const response = await apiFetch(`/appointments/${turnId}`, {
         method: 'DELETE',
       });
 
@@ -501,6 +585,87 @@ function Dashboard({ user, onSignOut }) {
     } catch (error) {
       console.error('Error deleting appointment:', error);
       setTurnsMessage({ type: 'error', text: error.message || 'No se pudo eliminar el turno.' });
+    }
+  };
+
+  const loadSecretaryPermissions = useCallback(async () => {
+    setPermissionsLoading(true);
+    try {
+      const response = await apiFetch('/secretary/permissions');
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'No se pudieron cargar los permisos');
+      }
+
+      setPermissionsState(result.roles || {});
+    } catch (error) {
+      setTurnsMessage({ type: 'error', text: error.message || 'No se pudieron cargar los permisos.' });
+    } finally {
+      setPermissionsLoading(false);
+    }
+  }, [apiFetch]);
+
+  const handleSendSecretaryNotification = async (event) => {
+    event.preventDefault();
+    setNotificationLoading(true);
+    setTurnsMessage({ type: '', text: '' });
+
+    try {
+      const recipients = notificationForm.recipients
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+      const response = await apiFetch('/secretary/notifications', {
+        method: 'POST',
+        body: JSON.stringify({
+          channel: notificationForm.channel,
+          recipients,
+          message: notificationForm.message,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'No se pudo enviar la notificación');
+      }
+
+      setTurnsMessage({ type: 'success', text: `Notificación encolada por ${result.channel} (${result.recipients.length} destinatarios).` });
+      setNotificationForm({ channel: notificationForm.channel, recipients: '', message: '' });
+    } catch (error) {
+      setTurnsMessage({ type: 'error', text: error.message || 'No se pudo enviar la notificación.' });
+    } finally {
+      setNotificationLoading(false);
+    }
+  };
+
+  const handleSaveSecretaryPermissions = async (event) => {
+    event.preventDefault();
+    setPermissionsLoading(true);
+    setTurnsMessage({ type: '', text: '' });
+
+    try {
+      const permissions = permissionForm.permissions
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+      const response = await apiFetch('/secretary/permissions', {
+        method: 'PATCH',
+        body: JSON.stringify({ role: permissionForm.role, permissions }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'No se pudieron guardar los permisos');
+      }
+
+      setPermissionsState(result.roles || {});
+      setTurnsMessage({ type: 'success', text: `Permisos actualizados para el rol ${result.role}.` });
+    } catch (error) {
+      setTurnsMessage({ type: 'error', text: error.message || 'No se pudieron guardar los permisos.' });
+    } finally {
+      setPermissionsLoading(false);
     }
   };
 
@@ -523,12 +688,11 @@ function Dashboard({ user, onSignOut }) {
     setIaLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/ia/consult`, {
+      const response = await apiFetch('/ai/recommendations', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          patientData: patient,
-          question: iaQuestion,
+          patientId: patient.id,
+          clinicalQuestion: iaQuestion,
         }),
       });
 
@@ -537,11 +701,172 @@ function Dashboard({ user, onSignOut }) {
         throw new Error(result.error || 'Error consultando IA');
       }
 
-      setIaAnswer(result.answer || 'No se recibió respuesta de la IA.');
+      setIaAnswer(result.recommendations || result.answer || 'No se recibió respuesta de la IA.');
     } catch (error) {
       setIaError(error.message);
     } finally {
       setIaLoading(false);
+    }
+  };
+
+  const handleIaChat = async () => {
+    setIaError('');
+    setIaAnswer('');
+
+    const patient = patients.find((p) => p.id === iaPatientId);
+    if (!patient) {
+      setIaError('Selecciona un paciente para consultar la IA.');
+      return;
+    }
+
+    if (!iaQuestion.trim()) {
+      setIaError('Escribe una pregunta para la IA.');
+      return;
+    }
+
+    setIaLoading(true);
+
+    try {
+      const response = await apiFetch('/ai/chat', {
+        method: 'POST',
+        body: JSON.stringify({
+          patientId: patient.id,
+          message: iaQuestion,
+          history: [],
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Error consultando chat IA');
+      }
+
+      setIaAnswer(result.answer || 'No se recibió respuesta del chat IA.');
+    } catch (error) {
+      setIaError(error.message);
+    } finally {
+      setIaLoading(false);
+    }
+  };
+
+  const handleIaIngest = async () => {
+    setIaError('');
+    setIaIngestResult('');
+
+    const patient = patients.find((p) => p.id === iaPatientId);
+    if (!patient) {
+      setIaError('Selecciona un paciente para la ingesta documental.');
+      return;
+    }
+
+    if (!iaDocumentReference.trim() && !iaDocumentRawText.trim()) {
+      setIaError('Debes ingresar una referencia de documento o texto OCR para ingesta.');
+      return;
+    }
+
+    setIaIngestLoading(true);
+
+    try {
+      const response = await apiFetch('/ai/ingest', {
+        method: 'POST',
+        body: JSON.stringify({
+          patientId: patient.id,
+          documentReference: iaDocumentReference.trim() || undefined,
+          rawText: iaDocumentRawText.trim() || undefined,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Error en ingesta de documento');
+      }
+
+      setIaIngestResult(result.parsedSummary || 'Documento procesado sin resumen textual.');
+    } catch (error) {
+      setIaError(error.message);
+    } finally {
+      setIaIngestLoading(false);
+    }
+  };
+
+  const handleCreateBillingRecord = async (event) => {
+    event.preventDefault();
+    setBillingMessage({ type: '', text: '' });
+
+    if (!billingForm.patient_id || !billingForm.invoice_number.trim() || !billingForm.amount) {
+      setBillingMessage({ type: 'error', text: 'Paciente, número de factura y monto son obligatorios.' });
+      return;
+    }
+
+    setBillingLoading(true);
+    try {
+      const payload = {
+        patient_id: billingForm.patient_id,
+        invoice_number: billingForm.invoice_number.trim(),
+        amount: Number(billingForm.amount),
+        status: billingForm.status,
+        notes: billingForm.notes || undefined,
+      };
+
+      const response = await apiFetch('/billing/records', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'No se pudo crear la factura');
+      }
+
+      setBillingMessage({ type: 'success', text: `Factura registrada: ${result.invoice_number}` });
+      setBillingForm({ patient_id: '', invoice_number: '', amount: '', status: 'pending', notes: '' });
+      await loadBillingReport();
+    } catch (error) {
+      setBillingMessage({ type: 'error', text: error.message || 'No se pudo crear la factura.' });
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
+  const handleRunConciliation = async (event) => {
+    event.preventDefault();
+    setBillingMessage({ type: '', text: '' });
+    setReconResult(null);
+
+    let records;
+    try {
+      records = JSON.parse(reconForm.recordsJson);
+    } catch {
+      setBillingMessage({ type: 'error', text: 'El lote de conciliación no es un JSON válido.' });
+      return;
+    }
+
+    if (!Array.isArray(records) || records.length === 0) {
+      setBillingMessage({ type: 'error', text: 'Debes enviar un arreglo de registros para conciliar.' });
+      return;
+    }
+
+    setReconLoading(true);
+    try {
+      const response = await apiFetch('/billing/conciliate', {
+        method: 'POST',
+        body: JSON.stringify({
+          records,
+          expectedTotal: reconForm.expectedTotal ? Number(reconForm.expectedTotal) : null,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'No se pudo ejecutar la conciliación');
+      }
+
+      setReconResult(result);
+      setBillingMessage({ type: 'success', text: 'Conciliación ejecutada correctamente.' });
+    } catch (error) {
+      setBillingMessage({ type: 'error', text: error.message || 'No se pudo ejecutar la conciliación.' });
+    } finally {
+      setReconLoading(false);
     }
   };
 
@@ -615,30 +940,20 @@ function Dashboard({ user, onSignOut }) {
   useEffect(() => {
     loadPatients();
     loadTurns();
-  }, [loadPatients, loadTurns]);
+    loadBillingReport();
+    loadSecretaryPermissions();
+  }, [loadPatients, loadTurns, loadBillingReport, loadSecretaryPermissions]);
 
   // Carga automática al cambiar de paciente en el formulario
   useEffect(() => {
     loadLatestVitals(vitalsForm.patientId);
   }, [vitalsForm.patientId, loadLatestVitals]);
 
-  useEffect(() => {
-    const handleGlobalKeyDown = (event) => {
-      if (event.altKey && event.key.toLowerCase() === 's') {
-        event.preventDefault();
-        setVitalsOpen((current) => !current);
-        return;
-      }
-
-      if (event.key === 'F5') {
-        event.preventDefault();
-        loadPatients(true, 'Lista actualizada.');
-      }
-    };
-
-    window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [loadPatients]);
+  useClinicalShortcuts({
+    onToggleVitals: () => setVitalsOpen((current) => !current),
+    onRefreshPatients: () => loadPatients(true, 'Lista actualizada.'),
+    onSectionChange: (section) => setActiveSection(section),
+  });
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -664,14 +979,13 @@ function Dashboard({ user, onSignOut }) {
         historia_tumoral: {
           ubicacion: formData.tumor_location || null,
           estadio: formData.tumor_stage || null,
-          marcadores_moleculares: formData.molecular_markers || {},
+          marcadores_moleculares: parseMolecularMarkers(formData.molecular_markers),
           diagnostico_resumen: formData.diagnosis_summary || ''
         }
       };
 
-      const response = await fetch(`${API_URL}/patients`, {
+      const response = await apiFetch('/patients', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patientData)
       });
 
@@ -712,7 +1026,7 @@ function Dashboard({ user, onSignOut }) {
     }
 
     try {
-      const response = await fetch(`${API_URL}/patients/${patient.id}`, {
+      const response = await apiFetch(`/patients/${patient.id}`, {
         method: 'DELETE'
       });
 
@@ -856,16 +1170,6 @@ function Dashboard({ user, onSignOut }) {
     setSavingVitals(false);
   };
 
-  const statusLabel = (status) => {
-    const labels = {
-      active: { text: 'Activo', color: '#16a34a', bg: '#dcfce7' },
-      follow_up: { text: 'Seguimiento', color: '#d97706', bg: '#fef3c7' },
-      discharged: { text: 'Alta', color: '#2563eb', bg: '#dbeafe' },
-      deceased: { text: 'Fallecido', color: '#dc2626', bg: '#fee2e2' },
-    };
-    return labels[status] || { text: status || 'Desconocido', color: '#6b7280', bg: '#f3f4f6' };
-  };
-
   return (
     <div className="app-shell">
       <header className="app-shell__header">
@@ -892,6 +1196,7 @@ function Dashboard({ user, onSignOut }) {
           type="button"
           className={`main-nav-link ${activeSection === 'pacientes' ? 'main-nav-link--active' : ''}`}
           onClick={() => setActiveSection('pacientes')}
+          aria-label="Sección de pacientes"
         >
           🧑‍⚕️ Pacientes
         </button>
@@ -899,6 +1204,7 @@ function Dashboard({ user, onSignOut }) {
           type="button"
           className={`main-nav-link ${activeSection === 'turnos' ? 'main-nav-link--active' : ''}`}
           onClick={() => setActiveSection('turnos')}
+          aria-label="Sección de secretaría y turnos"
         >
           ⏱️ Turnos
         </button>
@@ -906,13 +1212,23 @@ function Dashboard({ user, onSignOut }) {
           type="button"
           className={`main-nav-link ${activeSection === 'ia' ? 'main-nav-link--active' : ''}`}
           onClick={() => setActiveSection('ia')}
+          aria-label="Sección de asistencia IA"
         >
           🤖 IA
         </button>
         <button
           type="button"
+          className={`main-nav-link ${activeSection === 'finanzas' ? 'main-nav-link--active' : ''}`}
+          onClick={() => setActiveSection('finanzas')}
+          aria-label="Sección financiera"
+        >
+          💳 Finanzas
+        </button>
+        <button
+          type="button"
           className={`main-nav-link ${activeSection === 'config' ? 'main-nav-link--active' : ''}`}
           onClick={() => setActiveSection('config')}
+          aria-label="Sección de configuración"
         >
           ⚙️ Configuración
         </button>
@@ -964,352 +1280,105 @@ function Dashboard({ user, onSignOut }) {
                 <span style={{ color: 'var(--text-muted)' }}>Atajos: Enter guarda · F5 recarga · Alt+S signos vitales</span>
               </div>
 
-              <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 16 }}>
-                <div className="form-grid">
-                  <label>
-                    Nombre completo <span style={{ color: '#b91c1c' }}>*</span>
-                    <input
-                      autoFocus
-                      placeholder="Nombre y apellido"
-                      value={formData.full_name}
-                      onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    DNI / Documento
-                    <input
-                      placeholder="Número de documento"
-                      value={formData.dni}
-                      onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    Fecha de nacimiento
-                    <input
-                      type="date"
-                      value={formData.birth_date}
-                      onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    Sexo
-                    <select
-                      value={formData.gender}
-                      onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                    >
-                      <option value="No especificado">No especificado</option>
-                      <option value="Masculino">Masculino</option>
-                      <option value="Femenino">Femenino</option>
-                      <option value="Otro">Otro</option>
-                    </select>
-                  </label>
-                  <label>
-                    Contacto
-                    <input
-                      placeholder="Ej. +54 387 1234567 o email"
-                      value={formData.contact}
-                      onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    Estado clínico
-                    <select
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    >
-                      <option value="active">Activo</option>
-                      <option value="follow_up">Seguimiento</option>
-                      <option value="discharged">Alta</option>
-                      <option value="deceased">Fallecido</option>
-                    </select>
-                  </label>
-                </div>
-
-                <label>
-                  Resumen del diagnóstico
-                  <textarea
-                    rows="3"
-                    placeholder="Resumen breve del diagnóstico o patología"
-                    value={formData.diagnosis_summary}
-                    onChange={(e) => setFormData({ ...formData, diagnosis_summary: e.target.value })}
-                  />
-                </label>
-
-                <button type="submit" className="primary" disabled={savingPatient || !formIsValid}>
-                  {savingPatient ? 'Guardando paciente…' : '➕ Crear paciente'}
-                </button>
-              </form>
+              <PatientRegistrationForm
+                formData={formData}
+                setFormData={setFormData}
+                onSubmit={handleSubmit}
+                savingPatient={savingPatient}
+                formIsValid={formIsValid}
+              />
             </section>
 
             <section className="section-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-                <div>
-                  <h2 style={{ margin: 0 }}>Pacientes registrados</h2>
-                  <p style={{ margin: '6px 0 0', color: 'var(--text-muted)' }}>Búsqueda, filtros y acciones rápidas.</p>
-                </div>
-                <button type="button" className="secondary" onClick={() => loadPatients(true, 'Lista actualizada.')}>Recargar lista</button>
-              </div>
-
-              <div className="form-grid" style={{ alignItems: 'end' }}>
-                <input
-                  type="text"
-                  placeholder="Buscar por nombre o DNI..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                  <option value="todos">Todos los estados</option>
-                  <option value="active">Activo</option>
-                  <option value="follow_up">Seguimiento</option>
-                  <option value="discharged">Alta</option>
-                  <option value="deceased">Fallecido</option>
-                </select>
-              </div>
-
-              {message.text ? (
-                <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 12, border: message.type === 'success' ? '1px solid #86efac' : '1px solid #fda4af', background: message.type === 'success' ? '#f0fdf4' : '#fef2f2', color: message.type === 'success' ? '#166534' : '#b91c1c' }}>
-                  {message.text}
-                </div>
-              ) : null}
-
-              {patients.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)' }}>No hay pacientes cargados todavía.</p>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 15 }}>
-                    <thead>
-                      <tr style={{ background: '#f8fafc', color: '#334155', textAlign: 'left' }}>
-                        <th style={{ padding: '12px 10px', borderBottom: '1px solid #e2e8f0' }}>Paciente</th>
-                        <th style={{ padding: '12px 10px', borderBottom: '1px solid #e2e8f0' }}>Diagnóstico</th>
-                        <th style={{ padding: '12px 10px', borderBottom: '1px solid #e2e8f0' }}>Estado</th>
-                        <th style={{ padding: '12px 10px', borderBottom: '1px solid #e2e8f0' }}>Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredPatients.map((patient, index) => (
-                        <tr key={patient.id} style={{ background: index % 2 === 0 ? '#f8fafc' : '#ffffff' }}>
-                          <td style={{ padding: '12px 10px' }}>
-                            <strong>{patient.full_name}</strong>
-                            <div style={{ color: 'var(--text-muted)', marginTop: 4, fontSize: 13 }}>
-                              {[patient.dni && `DNI: ${patient.dni}`, patient.contact && `Contacto: ${patient.contact}`].filter(Boolean).join(' · ')}
-                            </div>
-                          </td>
-                          <td style={{ padding: '12px 10px', color: '#475569' }}>{patient.diagnosis_summary || 'Sin diagnóstico'}</td>
-                          <td style={{ padding: '12px 10px' }}>
-                            <span style={{ background: statusLabel(patient.status).bg, color: statusLabel(patient.status).color, padding: '6px 12px', borderRadius: 999, fontSize: 13, fontWeight: 700 }}>
-                              {statusLabel(patient.status).text}
-                            </span>
-                          </td>
-                          <td style={{ padding: '12px 10px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            <button type="button" className="secondary" onClick={() => navigate(`/patients/${patient.id}`)}>
-                              👁️ Ver historial
-                            </button>
-                            <button type="button" className="secondary" onClick={() => handleOpenVitals(patient)}>
-                              ❤️ Signos Vitales
-                            </button>
-                            <button type="button" className="secondary" onClick={() => handleEdit(patient)}>
-                              ✏️ Editar
-                            </button>
-                            <button type="button" className="secondary" onClick={() => handleDelete(patient)}>
-                              🗑️ Eliminar
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              <PatientsTable
+                patients={patients}
+                filteredPatients={filteredPatients}
+                searchTerm={searchTerm}
+                statusFilter={statusFilter}
+                setSearchTerm={setSearchTerm}
+                setStatusFilter={setStatusFilter}
+                message={message}
+                onReload={() => loadPatients(true, 'Lista actualizada.')}
+                onViewHistory={(patientId) => navigate(`/patients/${patientId}`)}
+                onOpenVitals={handleOpenVitals}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
             </section>
           </div>
         )}
 
         {activeSection === 'turnos' && (
-          <div className="page-grid">
-            <section className="section-card">
-              <h2>Turnos</h2>
-              <p style={{ marginTop: 4, color: 'var(--text-muted)' }}>Administrá la agenda clínica y los turnos de pacientes.</p>
-
-              {turnsMessage.text ? (
-                <div style={{ margin: '16px 0', padding: '12px 14px', borderRadius: 12, border: turnsMessage.type === 'success' ? '1px solid #86efac' : '1px solid #fda4af', background: turnsMessage.type === 'success' ? '#f0fdf4' : '#fef2f2', color: turnsMessage.type === 'success' ? '#166534' : '#b91c1c' }}>
-                  {turnsMessage.text}
-                </div>
-              ) : null}
-
-              <div className="turns-overview" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
-                <div className="turns-counter">
-                  <span>Agendados</span>
-                  <strong>{turnCounters.scheduled}</strong>
-                </div>
-                <div className="turns-counter">
-                  <span>Confirmados</span>
-                  <strong>{turnCounters.confirmed}</strong>
-                </div>
-                <div className="turns-counter">
-                  <span>Completados</span>
-                  <strong>{turnCounters.completed}</strong>
-                </div>
-                <div className="turns-counter">
-                  <span>Cancelados</span>
-                  <strong>{turnCounters.cancelled}</strong>
-                </div>
-              </div>
-
-              <form onSubmit={handleTurnSubmit} className="form-grid">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, width: '100%' }}>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{editingTurnId ? 'Editar turno' : 'Nuevo turno'}</h3>
-                    <p style={{ margin: '8px 0 0', color: 'var(--text-muted)', fontSize: 14 }}>{editingTurnId ? 'Modificá los datos y guardá los cambios.' : 'Cargá un nuevo turno en la agenda.'}</p>
-                  </div>
-                  {editingTurnId ? (
-                    <button type="button" className="secondary" onClick={resetTurnForm}>
-                      Cancelar edición
-                    </button>
-                  ) : null}
-                </div>
-                <label>
-                  Paciente
-                  <select value={turnForm.patientId} onChange={(e) => setTurnForm({ ...turnForm, patientId: e.target.value })}>
-                    <option value="">Selecciona un paciente</option>
-                    {patients.map((p) => (
-                      <option key={p.id} value={p.id}>{p.full_name}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Fecha
-                  <input type="date" value={turnForm.date} onChange={(e) => setTurnForm({ ...turnForm, date: e.target.value })} />
-                </label>
-                <label>
-                  Hora
-                  <input type="time" value={turnForm.time} onChange={(e) => setTurnForm({ ...turnForm, time: e.target.value })} />
-                </label>
-                <label style={{ gridColumn: 'span 2' }}>
-                  Nota rápida
-                  <input type="text" placeholder="Ej. Control quimioterapia" value={turnForm.note} onChange={(e) => setTurnForm({ ...turnForm, note: e.target.value })} />
-                </label>
-                <button type="submit" className="primary" disabled={turnSaving || !turnForm.patientId || !turnForm.date || !turnForm.time}>
-                  {turnSaving ? 'Guardando...' : editingTurnId ? 'Guardar cambios' : 'Agregar turno'}
-                </button>
-              </form>
-            </section>
-
-            <section className="section-card">
-              <div className="form-grid" style={{ marginBottom: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', alignItems: 'end' }}>
-                <label>
-                  Filtrar por estado
-                  <select value={turnsFilterStatus} onChange={(e) => setTurnsFilterStatus(e.target.value)}>
-                    <option value="all">Todos</option>
-                    <option value="scheduled">Agendados</option>
-                    <option value="confirmed">Confirmados</option>
-                    <option value="completed">Completados</option>
-                    <option value="cancelled">Cancelados</option>
-                  </select>
-                </label>
-                <label>
-                  Filtrar por paciente
-                  <select value={turnsFilterPatient} onChange={(e) => setTurnsFilterPatient(e.target.value)}>
-                    <option value="">Todos los pacientes</option>
-                    {patients.map((p) => (
-                      <option key={p.id} value={p.id}>{p.full_name}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <h2>Agenda</h2>
-              <div className="turns-overview">
-                {filteredTurns.length === 0 ? (
-                  <p style={{ color: 'var(--text-muted)' }}>
-                    {turns.length === 0 ? 'No hay turnos agendados aún.' : 'No hay turnos que coincidan con el filtro seleccionado.'}
-                  </p>
-                ) : (
-                  <ul className="turns-list">
-                    {filteredTurns.map((turn) => (
-                      <li key={turn.id} className="turn-card">
-                        <div className="turn-card__header">
-                          <div>
-                            <strong>{turn.patientName}</strong>
-                            <div style={{ color: 'var(--text-muted)', marginTop: 4, fontSize: 13 }}>{turn.note || 'Sin nota'}</div>
-                          </div>
-                          <span className={`turn-card__pill turn-card__pill--${turn.status}`}>
-                            {turn.status === 'scheduled' ? 'Agendado' : turn.status === 'confirmed' ? 'Confirmado' : turn.status === 'completed' ? 'Completado' : 'Cancelado'}
-                          </span>
-                        </div>
-                        <div className="turn-card__details">
-                          <span>{turn.date} · {turn.time}</span>
-                          <span>{turn.status === 'confirmed' ? 'Confirmado' : turn.status === 'completed' ? 'Completado' : turn.status === 'cancelled' ? 'Cancelado' : 'Programado'}</span>
-                        </div>
-                        <div className="turn-card__footer">
-                          <button type="button" className="secondary" onClick={() => handleEditTurn(turn)}>
-                            Editar
-                          </button>
-                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            {turn.status === 'scheduled' && (
-                              <button type="button" className="secondary" onClick={() => handleUpdateTurnStatus(turn.id, 'confirmed')}>Confirmar</button>
-                            )}
-                            {(turn.status === 'scheduled' || turn.status === 'confirmed') && (
-                              <button type="button" className="secondary" onClick={() => handleUpdateTurnStatus(turn.id, 'completed')}>Completar</button>
-                            )}
-                            {turn.status !== 'cancelled' && turn.status !== 'completed' && (
-                              <button type="button" className="secondary" onClick={() => handleUpdateTurnStatus(turn.id, 'cancelled')}>Cancelar</button>
-                            )}
-                            <button type="button" className="ghost" onClick={() => handleDeleteTurn(turn.id)}>Eliminar</button>
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </section>
-          </div>
+          <SecretaryAgenda
+            patients={patients}
+            turns={turns}
+            turnForm={turnForm}
+            setTurnForm={setTurnForm}
+            turnSaving={turnSaving}
+            editingTurnId={editingTurnId}
+            turnsMessage={turnsMessage}
+            turnsFilterStatus={turnsFilterStatus}
+            setTurnsFilterStatus={setTurnsFilterStatus}
+            turnsFilterPatient={turnsFilterPatient}
+            setTurnsFilterPatient={setTurnsFilterPatient}
+            turnCounters={turnCounters}
+            filteredTurns={filteredTurns}
+            onSubmitTurn={handleTurnSubmit}
+            onResetTurn={resetTurnForm}
+            onEditTurn={handleEditTurn}
+            onUpdateTurnStatus={handleUpdateTurnStatus}
+            onDeleteTurn={handleDeleteTurn}
+            notificationForm={notificationForm}
+            setNotificationForm={setNotificationForm}
+            notificationLoading={notificationLoading}
+            onSendNotification={handleSendSecretaryNotification}
+            permissionForm={permissionForm}
+            setPermissionForm={setPermissionForm}
+            permissionsState={permissionsState}
+            permissionsLoading={permissionsLoading}
+            onSavePermissions={handleSaveSecretaryPermissions}
+            onLoadPermissions={loadSecretaryPermissions}
+          />
         )}
 
         {activeSection === 'ia' && (
-          <section className="section-card">
-            <h2>IA</h2>
-            <p style={{ color: 'var(--text-muted)' }}>Usá la IA integrada para consultas clínicas rápidas.</p>
-            <form onSubmit={handleIaSubmit} style={{ display: 'grid', gap: 16, marginTop: 18 }}>
-              <div className="form-grid">
-                <label>
-                  Paciente
-                  <select value={iaPatientId} onChange={(e) => setIaPatientId(e.target.value)}>
-                    <option value="">Selecciona un paciente</option>
-                    {patients.map((p) => (
-                      <option key={p.id} value={p.id}>{p.full_name}</option>
-                    ))}
-                  </select>
-                </label>
+          <AIAssistantPanel
+            patients={patients}
+            iaPatientId={iaPatientId}
+            setIaPatientId={setIaPatientId}
+            iaQuestion={iaQuestion}
+            setIaQuestion={setIaQuestion}
+            iaAnswer={iaAnswer}
+            iaError={iaError}
+            iaLoading={iaLoading}
+            onAskRecommendations={handleIaSubmit}
+            onAskChat={handleIaChat}
+            documentReference={iaDocumentReference}
+            setDocumentReference={setIaDocumentReference}
+            documentRawText={iaDocumentRawText}
+            setDocumentRawText={setIaDocumentRawText}
+            ingestLoading={iaIngestLoading}
+            ingestResult={iaIngestResult}
+            onIngestDocument={handleIaIngest}
+          />
+        )}
 
-                <label style={{ gridColumn: 'span 1' }}>
-                  Consulta para IA
-                  <textarea
-                    rows="4"
-                    placeholder="Ej. ¿Cuál es el siguiente paso terapéutico para este caso?"
-                    value={iaQuestion}
-                    onChange={(e) => setIaQuestion(e.target.value)}
-                  />
-                </label>
-              </div>
-
-              {iaError ? (
-                <div style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid #fca5a5', background: '#fef2f2', color: '#b91c1c' }}>
-                  {iaError}
-                </div>
-              ) : null}
-
-              <button type="submit" className="primary" disabled={iaLoading || !iaPatientId || !iaQuestion.trim()}>
-                {iaLoading ? 'Consultando IA…' : 'Enviar consulta a IA'}
-              </button>
-
-              {iaAnswer ? (
-                <div style={{ marginTop: 20, padding: '18px', borderRadius: 18, background: '#f8fafc', border: '1px solid rgba(37, 99, 235, 0.14)', color: '#0f172a' }}>
-                  <strong>Respuesta de IA</strong>
-                  <p style={{ margin: '10px 0 0', lineHeight: 1.8 }}>{iaAnswer}</p>
-                </div>
-              ) : null}
-            </form>
-          </section>
+        {activeSection === 'finanzas' && (
+          <BillingDashboard
+            patients={patients}
+            billingReport={billingReport}
+            billingLoading={billingLoading}
+            billingMessage={billingMessage}
+            billingForm={billingForm}
+            setBillingForm={setBillingForm}
+            onCreateBillingRecord={handleCreateBillingRecord}
+            reconForm={reconForm}
+            setReconForm={setReconForm}
+            reconResult={reconResult}
+            reconLoading={reconLoading}
+            onRunConciliation={handleRunConciliation}
+            onReloadReport={loadBillingReport}
+          />
         )}
 
         {activeSection === 'config' && (

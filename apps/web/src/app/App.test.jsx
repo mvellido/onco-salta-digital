@@ -61,6 +61,6 @@ describe('App authentication flow', () => {
       expect(mockSignInWithPassword).toHaveBeenCalledWith({ email: 'doc@example.com', password: 'secret123' });
     });
 
-    expect(await screen.findByText(/gestión clínica rápida/i)).toBeInTheDocument();
+    expect(await screen.findByText(/plataforma clínica onco-salta digital v1\.0/i)).toBeInTheDocument();
   });
 });

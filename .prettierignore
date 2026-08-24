@@ -15,3 +15,8 @@ coverage/
 *.log
 .DS_Store
 Thumbs.db
+
+# Lockfiles
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
