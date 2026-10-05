@@ -16,7 +16,9 @@ const STATEMENT = {
 };
 
 describe('ReconciliationPanel', () => {
-  beforeEach(() => apiJson.mockReset());
+  beforeEach(() => {
+    apiJson.mockReset();
+  });
 
   it('decodes Windows-1252 bank exports', async () => {
     const bytes = new Uint8Array([0x44, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x63, 0x69, 0xf3, 0x6e]); // "Descripción" en latin1

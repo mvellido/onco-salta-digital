@@ -26,7 +26,9 @@ const EXTRACTION = {
 const ATTACHMENT = { id: 'a1', file_name: 'ap.pdf' };
 
 describe('DocumentReadPanel', () => {
-  beforeEach(() => apiJson.mockReset());
+  beforeEach(() => {
+    apiJson.mockReset();
+  });
 
   it('applies only the checked proposals to the chosen tumor, merging biomarkers', async () => {
     const onSaveTumor = vi.fn(async () => ({}));
@@ -63,7 +65,9 @@ describe('DocumentReadPanel', () => {
 });
 
 describe('RecordAIPanel', () => {
-  beforeEach(() => apiJson.mockReset());
+  beforeEach(() => {
+    apiJson.mockReset();
+  });
 
   it('shows past answers with their cited guideline pages', async () => {
     apiJson.mockResolvedValueOnce([
