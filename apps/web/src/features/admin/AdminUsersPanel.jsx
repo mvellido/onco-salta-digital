@@ -16,6 +16,7 @@ const PERMISSION_LABELS = {
   'notifications:send': 'Registrar avisos',
   'users:manage': 'Administrar usuarios y permisos',
   'audit:read': 'Ver auditoría',
+  'guidelines:manage': 'Administrar biblioteca de guías',
   'scope:all_patients': 'Acceso a todos los pacientes',
 };
 

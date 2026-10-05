@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, FileText, X } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, FileText, Sparkles, X } from 'lucide-react';
 import { supabase } from '../../app/supabaseClient';
+import { apiJson } from '../../lib/api';
 import { formatDate } from './catalog';
+import DocumentReadPanel from './DocumentReadPanel';
 
 const BUCKET = 'medical-history';
 
@@ -10,12 +12,28 @@ const isPdf = (a) => a.content_type === 'application/pdf' || /\.pdf$/i.test(a.fi
 
 // Galería de estudios: todos los adjuntos de la historia clínica del paciente.
 // `preloaded` permite mostrar adjuntos ya resueltos (con `url`) sin consultar Storage.
-export default function StudiesTab({ events, preloaded = null }) {
+export default function StudiesTab({ events, preloaded = null, patientId, canUseAI = false, canWrite = false, tumors = [], onSaveTumor }) {
   const [attachments, setAttachments] = useState(preloaded || []);
   const [urls, setUrls] = useState(() => Object.fromEntries((preloaded || []).map((a) => [a.id, a.url])));
   const [loading, setLoading] = useState(!preloaded);
   const [error, setError] = useState('');
   const [openIndex, setOpenIndex] = useState(null);
+  const [extractions, setExtractions] = useState({});
+  const [reading, setReading] = useState(null);
+
+  useEffect(() => {
+    if (!canUseAI || preloaded || !patientId) return undefined;
+    let cancelled = false;
+    apiJson(`/patients/${patientId}/extractions`)
+      .then((rows) => {
+        if (cancelled) return;
+        const latest = {};
+        rows.forEach((row) => { if (!latest[row.attachment_id]) latest[row.attachment_id] = row; });
+        setExtractions(latest);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [canUseAI, preloaded, patientId]);
 
   const eventIds = useMemo(() => events.map((event) => event.id), [events]);
   const eventById = useMemo(() => Object.fromEntries(events.map((event) => [event.id, event])), [events]);
@@ -86,11 +104,27 @@ export default function StudiesTab({ events, preloaded = null }) {
   return (
     <div style={{ display: 'grid', gap: 12 }}>
       <span className="eyebrow">{attachments.length} estudios adjuntos</span>
+      {reading ? (
+        <DocumentReadPanel
+          key={reading.id}
+          patientId={patientId}
+          attachment={reading}
+          previous={extractions[reading.id]}
+          tumors={tumors}
+          canWrite={canWrite}
+          onSaveTumor={onSaveTumor}
+          onClose={() => setReading(null)}
+          onRead={(saved) => setExtractions((current) => ({ ...current, [reading.id]: saved }))}
+        />
+      ) : null}
       <div className="study-grid">
         {attachments.map((attachment, index) => {
           const event = eventById[attachment.event_id];
+          const readable = canUseAI && (isImage(attachment) || isPdf(attachment));
+          const done = Boolean(extractions[attachment.id]);
           return (
-            <button key={attachment.id} type="button" className="study-tile" onClick={() => setOpenIndex(index)}>
+            <div key={attachment.id} className="study-tile">
+            <button type="button" className="study-tile__open" onClick={() => setOpenIndex(index)} aria-label={`Ver ${attachment.file_name}`}>
               <div className="study-tile__media">
                 {isImage(attachment) && urls[attachment.id]
                   ? <img src={urls[attachment.id]} alt="" loading="lazy" />
@@ -101,6 +135,13 @@ export default function StudiesTab({ events, preloaded = null }) {
                 <span>{event ? `${event.event_type} · ${formatDate(event.event_date)}` : formatDate(attachment.created_at)}</span>
               </div>
             </button>
+            {readable ? (
+              <button type="button" className={`study-tile__read${done ? ' study-tile__read--done' : ''}`} onClick={() => setReading(attachment)}>
+                {done ? <CheckCircle2 size={14} aria-hidden="true" /> : <Sparkles size={14} aria-hidden="true" />}
+                {done ? 'Leído · ver datos' : 'Leer con IA'}
+              </button>
+            ) : null}
+            </div>
           );
         })}
       </div>

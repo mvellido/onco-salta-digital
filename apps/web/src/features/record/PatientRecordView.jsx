@@ -169,7 +169,17 @@ export default function PatientRecordView({
             {tab === 'historia' ? (
               <HistoryTab patientId={record.id} user={user} canWrite={writable} initialEvents={demo ? timeline : null} onEventsChange={handleEventsChange} />
             ) : null}
-            {tab === 'estudios' ? <StudiesTab events={studiesEvents} preloaded={demo?.attachments || null} /> : null}
+            {tab === 'estudios' ? (
+              <StudiesTab
+                events={studiesEvents}
+                preloaded={demo?.attachments || null}
+                patientId={record.id}
+                canUseAI={canUseAI && !demo}
+                canWrite={writable}
+                tumors={record.tumors}
+                onSaveTumor={onSaveTumor}
+              />
+            ) : null}
             {tab === 'vitales' ? <VitalsTab patientId={record.id} canWrite={writable} preloaded={demo?.vitals || null} /> : null}
           </div>
         </section>
