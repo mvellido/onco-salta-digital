@@ -8,6 +8,9 @@ Todo el esquema vive en `migrations/`. Son las únicas fuentes de verdad: no hay
 | `20261005_0002_security.sql` | Funciones de permisos, políticas RLS y el bucket privado `medical-history` |
 | `20261006_0003_ficha_clinica.sql` | Tumores con TNM y biomarcadores, tratamientos, ECOG y alergias |
 | `20261006_0004_ia_segura.sql` | Historial de IA, lecturas de documentos, biblioteca de guías con pgvector y bucket privado `guidelines` |
+| `20261007_0005_agenda.sql` | Turnos con profesional, duración, tipo, recurso y sobreturno; horarios de atención |
+| `20261007_0006_coberturas.sql` | Obras sociales, coberturas por paciente y autorizaciones |
+| `20261007_0007_conciliacion.sql` | Extractos importados y movimientos para conciliar contra facturas |
 
 ## Instalación en el proyecto actual (compartido con la plataforma de cursos)
 
