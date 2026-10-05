@@ -11,6 +11,7 @@ import AIPage from '../pages/AIPage';
 import BillingPage from '../pages/BillingPage';
 import ConfigPage from '../pages/ConfigPage';
 import DemoRecordPage from '../pages/DemoRecordPage';
+import DemoAgendaPage from '../pages/DemoAgendaPage';
 import './styles.css';
 
 function getAuthErrorMessage(error) {
@@ -224,6 +225,7 @@ function App() {
         <Route path="/login" element={<LoginRoute user={user} onSignIn={(session) => setUser(session?.user ?? null)} />} />
         <Route path="/bienvenida" element={<SetPasswordPage user={user} />} />
         {import.meta.env.DEV ? <Route path="/demo/ficha" element={<main className="main-content" style={{ paddingTop: 24 }}><DemoRecordPage /></main>} /> : null}
+        {import.meta.env.DEV ? <Route path="/demo/agenda" element={<main className="main-content" style={{ paddingTop: 24 }}><DemoAgendaPage /></main>} /> : null}
         <Route
           element={
             <ProtectedRoute user={user}>
