@@ -43,7 +43,7 @@ test('buildPatientInsertRow usa las columnas de la migración', () => {
   );
   assert.deepEqual(
     Object.keys(row).sort(),
-    ['assigned_doctor_id', 'birth_date', 'contact', 'diagnosis_summary', 'dni', 'full_name', 'gender', 'molecular_markers', 'tumor_location', 'tumor_stage']
+    ['assigned_doctor_id', 'birth_date', 'contact', 'diagnosis_summary', 'dni', 'full_name', 'gender']
   );
   assert.equal(row.assigned_doctor_id, 'u-doc');
 });

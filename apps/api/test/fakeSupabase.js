@@ -8,7 +8,7 @@ class Query {
     this.filters = [];
     this.op = 'select';
     this.payload = null;
-    this.single = null;
+    this.singleMode = null;
     this.limitN = null;
   }
 
@@ -22,7 +22,8 @@ class Query {
   in(col, vals) { this.filters.push((r) => vals.includes(r[col])); return this; }
   order() { return this; }
   limit(n) { this.limitN = n; return this; }
-  maybeSingle() { this.single = 'maybe'; return this; }
+  maybeSingle() { this.singleMode = 'maybe'; return this; }
+  single() { this.singleMode = 'one'; return this; }
   then(resolve, reject) { return Promise.resolve(this.run()).then(resolve, reject); }
 
   run() {
@@ -44,7 +45,7 @@ class Query {
     }
 
     if (this.limitN !== null) result = result.slice(0, this.limitN);
-    if (this.single) return { data: result[0] ?? null, error: null };
+    if (this.singleMode) return { data: result[0] ?? null, error: null };
     return { data: result, error: null };
   }
 }

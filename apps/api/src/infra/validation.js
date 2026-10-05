@@ -2,10 +2,20 @@ import Ajv from 'ajv';
 import { patientUpdateSchema } from '../modules/patients/schemas.js';
 import { reconciliationRequestSchema } from '../modules/billing/schemas.js';
 import { ROLES } from '../modules/shared/access.js';
+import {
+  tumorCreateSchema,
+  tumorUpdateSchema,
+  treatmentCreateSchema,
+  treatmentUpdateSchema,
+} from '../modules/clinical/schemas.js';
 
 const ajv = new Ajv({ allErrors: true, removeAdditional: false });
 
 const validators = {
+  tumorCreate: ajv.compile(tumorCreateSchema),
+  tumorUpdate: ajv.compile(tumorUpdateSchema),
+  treatmentCreate: ajv.compile(treatmentCreateSchema),
+  treatmentUpdate: ajv.compile(treatmentUpdateSchema),
   appointmentCreate: ajv.compile({
     type: 'object',
     additionalProperties: true,

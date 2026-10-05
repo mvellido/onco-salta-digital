@@ -8,6 +8,7 @@ import aiRoutes from './routes/ai.js';
 import billingRoutes from './routes/billing.js';
 import appointmentsRoutes from './routes/appointments.js';
 import adminRoutes from './routes/admin.js';
+import clinicalRoutes from './routes/clinical.js';
 
 // Arma la API sin abrir el puerto, para poder probarla con app.inject().
 export function buildApp({
@@ -51,6 +52,7 @@ export function buildApp({
   app.register(billingRoutes, deps);
   app.register(appointmentsRoutes, deps);
   app.register(adminRoutes, deps);
+  app.register(clinicalRoutes, deps);
 
   return app;
 }

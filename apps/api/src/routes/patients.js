@@ -2,6 +2,7 @@ import { sendError, sendServerError, sendValidationError } from '../infra/errors
 import { validatePayload } from '../infra/validation.js';
 import { validatePatientFormatted } from '../validator.js';
 import { canAccessPatient } from '../modules/shared/access.js';
+import { listTumors, listTreatments } from '../modules/clinical/index.js';
 import {
   listPatients,
   createPatient,
@@ -103,6 +104,7 @@ export default async function patientsRoutes(app, { supabase, authenticate, audi
         return sendError(reply, 404, 'Paciente no encontrado o sin permisos');
       }
 
+      const [tumors, treatments] = await Promise.all([listTumors(supabase, id), listTreatments(supabase, id)]);
       let timelineData = [];
       let attachmentCounts = {};
 
@@ -115,7 +117,7 @@ export default async function patientsRoutes(app, { supabase, authenticate, audi
 
       await audit({ actorId: ctx.userId, patientId: id, resourceType: 'patient', resourceId: id, action: 'patient_view' });
 
-      return buildPatientDetailResponse(patient, timelineData, attachmentCounts);
+      return buildPatientDetailResponse(patient, timelineData, attachmentCounts, { tumors, treatments });
     } catch (err) {
       return sendServerError(request, reply, err, 'Exception in GET /patients/:id');
     }

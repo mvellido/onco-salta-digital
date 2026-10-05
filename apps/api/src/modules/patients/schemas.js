@@ -10,9 +10,8 @@ export const patientUpdateSchema = {
     birth_date: { type: ['string', 'null'] },
     gender: { type: ['string', 'null'] },
     contact: { type: ['string', 'null'] },
-    tumor_location: { type: ['string', 'null'] },
-    tumor_stage: { type: ['string', 'null'] },
-    molecular_markers: { type: ['object', 'null'] },
+    ecog: { type: ['integer', 'null'], minimum: 0, maximum: 4 },
+    allergies: { type: 'array', maxItems: 30, items: { type: 'string', minLength: 1, maxLength: 80 } },
   },
 };
 

@@ -19,8 +19,15 @@ export async function getPatientContextForAI(supabase, patientId, ctx) {
 
   if (timelineError) throw timelineError;
 
+  const [{ data: tumors, error: tumorsError }, { data: treatments, error: treatmentsError }] = await Promise.all([
+    supabase.from('tumors').select('*').eq('patient_id', patientId),
+    supabase.from('treatments').select('*').eq('patient_id', patientId),
+  ]);
+  if (tumorsError) throw tumorsError;
+  if (treatmentsError) throw treatmentsError;
+
   return {
-    patient,
+    patient: { ...patient, tumors: tumors || [], treatments: treatments || [] },
     timeline: timeline || [],
   };
 }

@@ -7,15 +7,59 @@ export function buildPatientContextBlock(patient, timeline = []) {
         .join('\n')
     : '- Sin eventos recientes cargados';
 
-  // Sin nombre, DNI ni contacto: el contexto sale del país hacia Gemini.
+  const tumorsText = (patient.tumors || []).length
+    ? patient.tumors.map(formatTumorLine).join('\n')
+    : '- Sin tumores cargados';
+
+  const treatmentsText = (patient.treatments || []).length
+    ? patient.treatments.map(formatTreatmentLine).join('\n')
+    : '- Sin tratamientos cargados';
+
+  // Sin nombre, DNI, contacto ni fecha de nacimiento: el contexto sale del país hacia Gemini.
   return `
+Edad: ${ageFromBirthDate(patient.birth_date) ?? 'No especificada'}
+Sexo: ${patient.gender || 'No especificado'}
+ECOG: ${patient.ecog ?? 'No registrado'}
+Alergias: ${(patient.allergies || []).join(', ') || 'Ninguna registrada'}
 Diagnóstico: ${patient.diagnosis_summary || 'No especificado'}
-Estadio: ${patient.tumor_stage || 'No especificado'}
-Localización: ${patient.tumor_location || 'No especificada'}
-Marcadores moleculares: ${JSON.stringify(patient.molecular_markers || {})}
+Tumores:
+${tumorsText}
+Tratamientos:
+${treatmentsText}
 Eventos clínicos recientes:
 ${timelineText}
 `.trim();
+}
+
+export function ageFromBirthDate(birthDate, today = new Date()) {
+  if (!birthDate) return null;
+  const birth = new Date(`${birthDate}T00:00:00`);
+  if (Number.isNaN(birth.getTime())) return null;
+  let age = today.getFullYear() - birth.getFullYear();
+  const beforeBirthday = today.getMonth() < birth.getMonth()
+    || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate());
+  if (beforeBirthday) age -= 1;
+  return age;
+}
+
+function formatTumorLine(tumor) {
+  const tnm = [tumor.t_category, tumor.n_category, tumor.m_category].filter(Boolean).join(' ');
+  const parts = [
+    `${tumor.primary_site}${tumor.laterality && tumor.laterality !== 'na' ? ` (${tumor.laterality})` : ''}`,
+    tumor.site_detail,
+    tumor.histology,
+    tumor.size_mm ? `${tumor.size_mm} mm` : null,
+    tnm ? `${tumor.tnm_prefix || 'c'}${tnm}` : null,
+    tumor.stage_group ? `estadio ${tumor.stage_group}` : null,
+    tumor.status,
+  ].filter(Boolean);
+  const markers = (tumor.biomarkers || []).map((b) => `${b.name} ${b.result}`).join(', ');
+  return `- ${parts.join(' · ')}${markers ? ` · biomarcadores: ${markers}` : ''}`;
+}
+
+function formatTreatmentLine(treatment) {
+  const cycles = treatment.cycles_planned ? ` · ciclos ${treatment.cycles_done}/${treatment.cycles_planned}` : '';
+  return `- ${treatment.kind}: ${treatment.regimen}${treatment.intent ? ` (${treatment.intent})` : ''} · ${treatment.status}${cycles}${treatment.start_date ? ` · desde ${treatment.start_date}` : ''}`;
 }
 
 export function buildIngestPrompt({ patient, timeline, documentText, documentReference }) {
