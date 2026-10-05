@@ -12,6 +12,31 @@ import {
 const ajv = new Ajv({ allErrors: true, removeAdditional: false });
 
 const validators = {
+  guidelineCreate: ajv.compile({
+    type: 'object',
+    required: ['title', 'fileName'],
+    additionalProperties: false,
+    properties: {
+      title: { type: 'string', minLength: 3, maxLength: 200 },
+      organization: { type: 'string', maxLength: 120 },
+      version: { type: 'string', maxLength: 40 },
+      published_on: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+      license_note: { type: 'string', maxLength: 300 },
+      fileName: { type: 'string', minLength: 1, maxLength: 200, pattern: '\\.pdf$' },
+    },
+  }),
+  guidelineUpdate: ajv.compile({
+    type: 'object',
+    minProperties: 1,
+    additionalProperties: false,
+    properties: {
+      active: { type: 'boolean' },
+      title: { type: 'string', minLength: 3, maxLength: 200 },
+      organization: { type: 'string', maxLength: 120 },
+      version: { type: 'string', maxLength: 40 },
+      license_note: { type: 'string', maxLength: 300 },
+    },
+  }),
   tumorCreate: ajv.compile(tumorCreateSchema),
   tumorUpdate: ajv.compile(tumorUpdateSchema),
   treatmentCreate: ajv.compile(treatmentCreateSchema),

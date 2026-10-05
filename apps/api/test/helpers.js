@@ -2,12 +2,12 @@ import { buildApp } from '../src/app.js';
 import { createFakeSupabase } from './fakeSupabase.js';
 
 const DEFAULT_PERMISSIONS = {
-  admin: ['patients:read', 'patients:read_basic', 'patients:write', 'patients:archive', 'users:manage', 'scope:all_patients'],
-  doctor: ['patients:read', 'patients:read_basic', 'patients:write', 'patients:archive', 'appointments:read'],
+  admin: ['patients:read', 'patients:read_basic', 'patients:write', 'patients:archive', 'users:manage', 'guidelines:manage', 'ai:use', 'scope:all_patients'],
+  doctor: ['patients:read', 'patients:read_basic', 'patients:write', 'patients:archive', 'appointments:read', 'ai:use'],
   secretary: ['patients:read_basic', 'appointments:read', 'appointments:write', 'scope:all_patients'],
 };
 
-export function setup() {
+export function setup({ gemini = null, files = {}, rpc = {}, extraTables = {} } = {}) {
   const supabase = createFakeSupabase({
     users: {
       'tok-admin': { id: 'u-admin', email: 'admin@onco.test' },
@@ -32,10 +32,13 @@ export function setup() {
         { id: 'p2', full_name: 'Paciente Dos', dni: '2', diagnosis_summary: 'Linfoma', status: 'active', assigned_doctor_id: 'u-doc2', archived_at: null },
       ],
       audit_logs: [],
+      ...extraTables,
     },
+    files,
+    rpc,
   });
 
-  const app = buildApp({ supabase, logger: false });
+  const app = buildApp({ supabase, gemini, logger: false });
   const call = (token, method, url, payload) =>
     app.inject({ method, url, payload, headers: token ? { authorization: `Bearer ${token}` } : {} });
 

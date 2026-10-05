@@ -16,6 +16,7 @@ export const PERMISSIONS = [
   'notifications:send',
   'users:manage',
   'audit:read',
+  'guidelines:manage',
   'scope:all_patients',
 ];
 

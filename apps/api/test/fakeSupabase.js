@@ -50,11 +50,27 @@ class Query {
   }
 }
 
-export function createFakeSupabase({ users = {}, tables = {} } = {}) {
+export function createFakeSupabase({ users = {}, tables = {}, files = {}, rpc = {} } = {}) {
   const db = structuredClone(tables);
+  const storage = { ...files };
   return {
     db,
+    files: storage,
     from: (table) => new Query(db, table),
+    rpc: async (name, args) => (rpc[name]
+      ? { data: rpc[name](args, db), error: null }
+      : { data: null, error: { message: `rpc ${name} no definida` } }),
+    storage: {
+      from: (bucket) => ({
+        download: async (path) => (storage[`${bucket}/${path}`]
+          ? { data: new Blob([storage[`${bucket}/${path}`]]), error: null }
+          : { data: null, error: { message: 'Object not found' } }),
+        createSignedUploadUrl: async (path) => ({ data: { signedUrl: `https://storage.test/${bucket}/${path}?token=t`, token: 't', path }, error: null }),
+        createSignedUrl: async (path) => ({ data: { signedUrl: `https://storage.test/${bucket}/${path}?sig=s` }, error: null }),
+        list: async () => ({ data: [], error: null }),
+        remove: async (paths) => ({ data: paths, error: null }),
+      }),
+    },
     auth: {
       getUser: async (token) =>
         users[token] ? { data: { user: users[token] }, error: null } : { data: { user: null }, error: { message: 'invalid' } },

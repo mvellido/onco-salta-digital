@@ -9,13 +9,14 @@ import billingRoutes from './routes/billing.js';
 import appointmentsRoutes from './routes/appointments.js';
 import adminRoutes from './routes/admin.js';
 import clinicalRoutes from './routes/clinical.js';
+import guidelinesRoutes from './routes/guidelines.js';
 
 // Arma la API sin abrir el puerto, para poder probarla con app.inject().
 export function buildApp({
   supabase,
   allowedOrigins = [],
   storageBucket = 'medical-history',
-  geminiApiKey = '',
+  gemini = null,
   appUrl = '',
   logger = true,
 }) {
@@ -43,7 +44,7 @@ export function buildApp({
     authenticate: createAuthGuard(supabase),
     audit: createAuditRecorder(supabase, app.log),
     storageBucket,
-    geminiApiKey,
+    gemini,
     appUrl,
   };
 
@@ -53,6 +54,7 @@ export function buildApp({
   app.register(appointmentsRoutes, deps);
   app.register(adminRoutes, deps);
   app.register(clinicalRoutes, deps);
+  app.register(guidelinesRoutes, deps);
 
   return app;
 }

@@ -3,6 +3,7 @@ import { dirname, join } from 'path';
 import { config } from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import { buildApp } from './app.js';
+import { createGemini } from './modules/ai/gemini.js';
 
 // En desarrollo las variables vienen de apps/api/.env.local; en Render, del panel.
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -24,7 +25,11 @@ const app = buildApp({
   supabase,
   allowedOrigins: (process.env.CORS_ALLOWED_ORIGINS || '').split(',').map((origin) => origin.trim()).filter(Boolean),
   storageBucket: process.env.SUPABASE_STORAGE_BUCKET || 'medical-history',
-  geminiApiKey: process.env.GEMINI_API_KEY || '',
+  gemini: createGemini({
+    apiKey: process.env.GEMINI_API_KEY || '',
+    model: process.env.GEMINI_MODEL || undefined,
+    embeddingModel: process.env.GEMINI_EMBEDDING_MODEL || undefined,
+  }),
   appUrl: (process.env.APP_URL || '').replace(/\/$/, ''),
 });
 

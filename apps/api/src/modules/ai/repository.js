@@ -32,24 +32,55 @@ export async function getPatientContextForAI(supabase, patientId, ctx) {
   };
 }
 
-export async function listRecentDocumentsForPatient(supabase, patientId) {
-  const { data, error } = await supabase
-    .from('event_attachments')
-    .select('id, event_id, file_name, content_type, created_at')
-    .in(
-      'event_id',
-      (
-        await supabase
-          .from('treatment_history')
-          .select('id')
-          .eq('patient_id', patientId)
-          .order('event_date', { ascending: false })
-          .limit(20)
-      ).data?.map((row) => row.id) || ['00000000-0000-0000-0000-000000000000']
-    )
-    .order('created_at', { ascending: false })
-    .limit(10);
+export async function saveInteraction(supabase, row) {
+  const { data, error } = await supabase.from('ai_interactions').insert([row]).select().single();
+  if (error) throw error;
+  return data;
+}
 
+export async function listInteractions(supabase, patientId, limit = 30) {
+  const { data, error } = await supabase
+    .from('ai_interactions')
+    .select('id, kind, question, answer, sources, model, provider, redactions, created_at, actor_id')
+    .eq('patient_id', patientId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data || [];
+}
+
+// Adjunto de la historia clínica, solo si pertenece al paciente indicado.
+export async function findAttachmentForPatient(supabase, attachmentId, patientId) {
+  const { data: attachment, error } = await supabase
+    .from('event_attachments')
+    .select('id, event_id, file_name, storage_path, content_type, size')
+    .eq('id', attachmentId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!attachment) return null;
+
+  const { data: event, error: eventError } = await supabase
+    .from('treatment_history')
+    .select('id, patient_id')
+    .eq('id', attachment.event_id)
+    .maybeSingle();
+  if (eventError) throw eventError;
+
+  return event?.patient_id === patientId ? attachment : null;
+}
+
+export async function saveExtraction(supabase, row) {
+  const { data, error } = await supabase.from('document_extractions').insert([row]).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function listExtractions(supabase, patientId) {
+  const { data, error } = await supabase
+    .from('document_extractions')
+    .select('id, attachment_id, method, summary, extracted, redactions, model, created_at')
+    .eq('patient_id', patientId)
+    .order('created_at', { ascending: false });
   if (error) throw error;
   return data || [];
 }
