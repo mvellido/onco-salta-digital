@@ -17,6 +17,7 @@ export const PERMISSIONS = [
   'users:manage',
   'audit:read',
   'guidelines:manage',
+  'coverage:manage',
   'scope:all_patients',
 ];
 

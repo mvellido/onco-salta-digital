@@ -4,7 +4,7 @@ import { createFakeSupabase } from './fakeSupabase.js';
 const DEFAULT_PERMISSIONS = {
   admin: ['patients:read', 'patients:read_basic', 'patients:write', 'patients:archive', 'users:manage', 'guidelines:manage', 'ai:use', 'scope:all_patients'],
   doctor: ['patients:read', 'patients:read_basic', 'patients:write', 'patients:archive', 'appointments:read', 'appointments:write', 'ai:use'],
-  secretary: ['patients:read_basic', 'appointments:read', 'appointments:write', 'scope:all_patients'],
+  secretary: ['patients:read_basic', 'appointments:read', 'appointments:write', 'coverage:manage', 'scope:all_patients'],
 };
 
 export function setup({ gemini = null, files = {}, rpc = {}, extraTables = {} } = {}) {

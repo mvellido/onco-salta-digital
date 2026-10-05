@@ -4,6 +4,14 @@ import { reconciliationRequestSchema } from '../modules/billing/schemas.js';
 import { ROLES } from '../modules/shared/access.js';
 import { appointmentCreateSchema, appointmentUpdateSchema, scheduleReplaceSchema } from '../modules/secretary/schemas.js';
 import {
+  payerCreateSchema,
+  payerUpdateSchema,
+  coverageCreateSchema,
+  coverageUpdateSchema,
+  authorizationCreateSchema,
+  authorizationUpdateSchema,
+} from '../modules/coverage/index.js';
+import {
   tumorCreateSchema,
   tumorUpdateSchema,
   treatmentCreateSchema,
@@ -42,6 +50,12 @@ const validators = {
   tumorUpdate: ajv.compile(tumorUpdateSchema),
   treatmentCreate: ajv.compile(treatmentCreateSchema),
   treatmentUpdate: ajv.compile(treatmentUpdateSchema),
+  payerCreate: ajv.compile(payerCreateSchema),
+  payerUpdate: ajv.compile(payerUpdateSchema),
+  coverageCreate: ajv.compile(coverageCreateSchema),
+  coverageUpdate: ajv.compile(coverageUpdateSchema),
+  authorizationCreate: ajv.compile(authorizationCreateSchema),
+  authorizationUpdate: ajv.compile(authorizationUpdateSchema),
   appointmentCreate: ajv.compile(appointmentCreateSchema),
   appointmentUpdate: ajv.compile(appointmentUpdateSchema),
   scheduleReplace: ajv.compile(scheduleReplaceSchema),
