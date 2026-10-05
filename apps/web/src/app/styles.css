@@ -759,7 +759,7 @@ label {
 
 .record-layout {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr) 330px;
+  grid-template-columns: 200px minmax(0, 1fr) 320px;
   gap: 18px;
   align-items: start;
 }
@@ -799,14 +799,14 @@ label {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 10px 12px;
+  padding: 9px 9px;
   border: 1px solid transparent;
   border-bottom: 0;
   border-radius: 12px 12px 0 0;
   background: transparent;
   color: var(--muted);
   font-family: var(--f-display);
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1584,3 +1584,61 @@ kbd {
 .appt--otro, .legend-dot.appt--otro { --k: var(--k-otro); }
 
 .chip.appt-chip { background: color-mix(in srgb, var(--k) 16%, #fff); color: color-mix(in srgb, var(--k) 80%, #000); }
+
+/* ---------------------------------------------------------------- Etapa 4b: coberturas y autorizaciones */
+
+.coverage-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-solid);
+}
+
+.auth-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-solid);
+}
+
+.auth-card--soon { border-color: var(--warn); box-shadow: inset 4px 0 0 var(--warn); }
+.auth-card--expired { border-color: var(--danger); box-shadow: inset 4px 0 0 var(--danger); }
+.auth-card__meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 0.75rem; color: var(--muted); }
+.auth-card__alert { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 600; color: var(--warn); }
+.auth-card--expired .auth-card__alert { color: var(--danger); }
+.auth-card__form { display: grid; gap: 8px; }
+.auth-card .chip-row button { padding: 5px 10px; font-size: 0.8rem; }
+
+.auth-board {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(220px, 1fr));
+  gap: 10px;
+  overflow-x: auto;
+  align-items: start;
+}
+
+.auth-board__col {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  min-height: 120px;
+  align-content: start;
+}
+
+.auth-board__col h3 {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}

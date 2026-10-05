@@ -53,6 +53,6 @@ export const SECTIONS = [
   { path: '/pacientes', label: 'Pacientes', aria: 'Sección de pacientes', icon: 'users', visible: (can) => can('patients:read') || can('patients:read_basic') },
   { path: '/turnos', label: 'Turnos', aria: 'Sección de secretaría y turnos', icon: 'calendar', visible: (can) => can('appointments:read') },
   { path: '/ia', label: 'IA', aria: 'Sección de asistencia IA', icon: 'sparkles', visible: (can) => can('ai:use') && can('patients:read') },
-  { path: '/finanzas', label: 'Finanzas', aria: 'Sección financiera', icon: 'wallet', visible: (can) => can('billing:read') },
+  { path: '/finanzas', label: 'Finanzas', aria: 'Sección financiera', icon: 'wallet', visible: (can) => can('billing:read') || can('coverage:manage') },
   { path: '/config', label: 'Config.', aria: 'Sección de configuración', icon: 'settings', visible: () => true },
 ];

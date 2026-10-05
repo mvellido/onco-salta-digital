@@ -97,3 +97,12 @@ export const DEMO_VITALS = [
   { id: 'v2', recorded_at: '2026-08-05T10:00:00Z', blood_pressure_systolic: 122, blood_pressure_diastolic: 80, heart_rate: 82, temperature: 36.4, oxygen_saturation: 95, weight: 64.9 },
   { id: 'v1', recorded_at: '2026-07-15T10:00:00Z', blood_pressure_systolic: 128, blood_pressure_diastolic: 82, heart_rate: 84, temperature: 36.6, oxygen_saturation: 94, weight: 66.0 },
 ];
+
+export const DEMO_COVERAGE = {
+  payers: [{ id: 'demo-os', name: 'Obra social de ejemplo', kind: 'obra_social' }],
+  coverages: [{ id: 'demo-cov', payer_id: 'demo-os', member_number: '000000/00', plan: 'Integral', is_primary: true, payer: { name: 'Obra social de ejemplo', kind: 'obra_social' } }],
+  authorizations: [
+    { id: 'demo-auth-1', item: 'Pembrolizumab 200 mg', quantity: '6 ciclos', status: 'approved', requested_on: '2026-07-03', authorization_number: 'EJ-0001', valid_until: '2026-10-15', expiry: 'soon', days_left: 10, payer: { name: 'Obra social de ejemplo' } },
+    { id: 'demo-auth-2', item: 'TC de tórax con contraste', quantity: '1', status: 'submitted', requested_on: '2026-10-01', payer: { name: 'Obra social de ejemplo' } },
+  ],
+};

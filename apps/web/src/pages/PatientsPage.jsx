@@ -4,6 +4,7 @@ import { apiJson } from '../lib/api';
 import { useMe } from '../app/MeContext';
 import PatientRegistrationForm, { EMPTY_PATIENT_FORM } from '../features/patients/PatientRegistrationForm';
 import PatientsTable from '../features/patients/PatientsTable';
+import CoverageTab from '../features/coverage/CoverageTab';
 
 export default function PatientsPage() {
   const { me, can } = useMe();
@@ -18,6 +19,7 @@ export default function PatientsPage() {
   const [formData, setFormData] = useState(EMPTY_PATIENT_FORM);
   const [savingPatient, setSavingPatient] = useState(false);
   const [doctors, setDoctors] = useState(null);
+  const [coveragePatient, setCoveragePatient] = useState(null);
 
   const canWrite = can('patients:write');
   const assignsDoctor = canWrite && me.role !== 'doctor' && can('users:manage');
@@ -132,11 +134,25 @@ export default function PatientsPage() {
           onOpenRecord={(id) => navigate(`/pacientes/${id}`)}
           onArchive={(patient) => { setArchivingPatient(patient); setArchiveReason(''); }}
           onRestore={handleRestore}
+          onOpenCoverage={can('coverage:manage') && !can('patients:read') ? setCoveragePatient : undefined}
           canClinical={can('patients:read')}
           canArchive={can('patients:archive')}
           showArchived={showArchived}
           setShowArchived={setShowArchived}
         />
+
+        {coveragePatient ? (
+          <div className="read-panel" style={{ marginTop: 16 }}>
+            <div className="toolbar">
+              <div>
+                <span className="eyebrow">Cobertura y autorizaciones</span>
+                <h3>{coveragePatient.full_name}</h3>
+              </div>
+              <button type="button" className="secondary" onClick={() => setCoveragePatient(null)}>Cerrar</button>
+            </div>
+            <CoverageTab key={coveragePatient.id} patientId={coveragePatient.id} canWrite />
+          </div>
+        ) : null}
 
         {archivingPatient ? (
           <form onSubmit={handleArchive} className="archive-panel" aria-label="Archivar paciente">

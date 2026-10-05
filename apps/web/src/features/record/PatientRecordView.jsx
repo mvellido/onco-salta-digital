@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ClipboardList, FileImage, HeartPulse, History, Pill, Target } from 'lucide-react';
+import { ArrowLeft, ClipboardList, FileImage, HeartPulse, History, Pill, ShieldCheck, Target } from 'lucide-react';
 import GeneralTab from './GeneralTab';
 import TumorTab from './TumorTab';
 import TreatmentsTab from './TreatmentsTab';
@@ -8,6 +8,7 @@ import HistoryTab from './HistoryTab';
 import StudiesTab from './StudiesTab';
 import VitalsTab from './VitalsTab';
 import RecordAIPanel from './RecordAIPanel';
+import CoverageTab from '../coverage/CoverageTab';
 import { ageFrom, siteLabel, tnmString } from './catalog';
 
 export const TABS = [
@@ -17,6 +18,7 @@ export const TABS = [
   { id: 'historia', label: 'Historia', icon: History },
   { id: 'estudios', label: 'Estudios', icon: FileImage },
   { id: 'vitales', label: 'Vitales', icon: HeartPulse },
+  { id: 'cobertura', label: 'Cobertura', icon: ShieldCheck },
 ];
 
 const isTyping = (target) => target instanceof HTMLElement
@@ -50,7 +52,7 @@ function ShortcutsCard() {
     <aside className="side-card record-shortcuts" aria-label="Atajos de teclado">
       <h2>Atajos</h2>
       <div className="shortcut-list">
-        <kbd>1–6</kbd><span>Pestañas de la ficha</span>
+        <kbd>1–7</kbd><span>Pestañas de la ficha</span>
         <kbd>N</kbd><span>Nuevo evento</span>
         <kbd>/</kbd><span>Preguntar a la IA</span>
         <kbd>Alt+1…5</kbd><span>Secciones</span>
@@ -181,6 +183,9 @@ export default function PatientRecordView({
               />
             ) : null}
             {tab === 'vitales' ? <VitalsTab patientId={record.id} canWrite={writable} preloaded={demo?.vitals || null} /> : null}
+            {tab === 'cobertura' ? (
+              <CoverageTab patientId={record.id} treatments={record.treatments} canWrite={writable} preloaded={demo?.coverage || null} />
+            ) : null}
           </div>
         </section>
 

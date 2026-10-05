@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import PatientRecordView from '../features/record/PatientRecordView';
-import { DEMO_ATTACHMENTS, DEMO_RECORD, DEMO_VITALS } from '../features/record/demoRecord';
+import { DEMO_ATTACHMENTS, DEMO_COVERAGE, DEMO_RECORD, DEMO_VITALS } from '../features/record/demoRecord';
 
 // Ficha con datos ficticios para revisar el diseño sin tocar la base.
 // Solo se registra la ruta en desarrollo (ver App.jsx). Los cambios quedan en memoria.
@@ -19,7 +19,7 @@ export default function DemoRecordPage() {
         canWrite
         canUseAI
         backTo="/demo/ficha"
-        demo={{ attachments: DEMO_ATTACHMENTS, vitals: DEMO_VITALS }}
+        demo={{ attachments: DEMO_ATTACHMENTS, vitals: DEMO_VITALS, coverage: DEMO_COVERAGE }}
         onUpdatePatient={async (changes) => {
           setRecord((current) => ({ ...current, ...changes, ...('ecog' in changes ? { ecog_updated_at: new Date().toISOString() } : {}) }));
         }}

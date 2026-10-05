@@ -1,4 +1,4 @@
-import { Archive, FolderOpen, RotateCcw, Search } from 'lucide-react';
+import { Archive, FolderOpen, RotateCcw, Search, ShieldCheck } from 'lucide-react';
 
 export const STATUS_LABELS = {
   active: 'Activo',
@@ -19,6 +19,7 @@ export default function PatientsTable({
   onOpenRecord,
   onArchive,
   onRestore,
+  onOpenCoverage,
   canClinical,
   canArchive,
   showArchived,
@@ -105,6 +106,11 @@ export default function PatientsTable({
                       {canClinical && !showArchived ? (
                         <button type="button" className="secondary icon-button" onClick={() => onOpenRecord(patient.id)}>
                           <FolderOpen size={15} aria-hidden="true" /> Ficha
+                        </button>
+                      ) : null}
+                      {onOpenCoverage && !showArchived ? (
+                        <button type="button" className="secondary icon-button" onClick={() => onOpenCoverage(patient)}>
+                          <ShieldCheck size={15} aria-hidden="true" /> Cobertura
                         </button>
                       ) : null}
                       {canArchive && !showArchived ? (

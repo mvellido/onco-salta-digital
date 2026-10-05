@@ -8,7 +8,7 @@ import PatientsPage from '../pages/PatientsPage';
 import PatientRecordPage from '../pages/PatientRecordPage';
 import AgendaPage from '../pages/AgendaPage';
 import AIPage from '../pages/AIPage';
-import BillingPage from '../pages/BillingPage';
+import FinancePage from '../pages/FinancePage';
 import ConfigPage from '../pages/ConfigPage';
 import DemoRecordPage from '../pages/DemoRecordPage';
 import DemoAgendaPage from '../pages/DemoAgendaPage';
@@ -241,7 +241,7 @@ function App() {
           <Route path="patients/:patientId" element={<LegacyPatientRedirect />} />
           <Route path="turnos" element={<AgendaPage />} />
           <Route path="ia" element={<AIPage />} />
-          <Route path="finanzas" element={<BillingPage />} />
+          <Route path="finanzas" element={<FinancePage />} />
           <Route path="config" element={<ConfigPage />} />
         </Route>
         <Route path="*" element={<Navigate to={user ? '/' : '/login'} replace />} />
