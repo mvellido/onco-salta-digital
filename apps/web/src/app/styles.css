@@ -1642,3 +1642,15 @@ kbd {
   letter-spacing: 0.06em;
   color: var(--muted);
 }
+
+/* ---------------------------------------------------------------- Etapa 4c: conciliación */
+
+.split-layout--reverse { grid-template-columns: minmax(0, 1fr) 320px; }
+@media (max-width: 1000px) { .split-layout--reverse { grid-template-columns: minmax(0, 1fr); } }
+
+.recon-table select { min-width: 200px; padding: 6px 8px; font-size: 0.85rem; }
+.recon-row--matched { background: color-mix(in srgb, var(--teal-soft) 60%, transparent); }
+.recon-row--ignored { opacity: 0.55; }
+.recon-row--review td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
+.recon-row--proposed td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.recon-confirm { position: sticky; bottom: 0; padding: 12px 0 0; background: linear-gradient(transparent, var(--surface) 30%); }

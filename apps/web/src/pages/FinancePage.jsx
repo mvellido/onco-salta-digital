@@ -3,11 +3,13 @@ import { useMe } from '../app/MeContext';
 import BillingPage from './BillingPage';
 import AuthorizationsBoard from '../features/coverage/AuthorizationsBoard';
 import PayersPanel from '../features/coverage/PayersPanel';
+import ReconciliationPanel from '../features/billing/ReconciliationPanel';
 
 export default function FinancePage() {
   const { can } = useMe();
   const tabs = [
     { id: 'facturacion', label: 'Facturación', visible: can('billing:read') },
+    { id: 'conciliacion', label: 'Conciliación', visible: can('billing:read') },
     { id: 'autorizaciones', label: 'Autorizaciones', visible: can('coverage:manage') || can('billing:read') },
     { id: 'obras-sociales', label: 'Obras sociales', visible: can('coverage:manage') || can('billing:read') },
   ].filter((tab) => tab.visible);
@@ -23,6 +25,7 @@ export default function FinancePage() {
         ))}
       </div>
       {tab === 'facturacion' ? <BillingPage /> : null}
+      {tab === 'conciliacion' ? <ReconciliationPanel canWrite={can('billing:write')} /> : null}
       {tab === 'autorizaciones' ? <section className="section-card"><AuthorizationsBoard canWrite={can('coverage:manage')} /></section> : null}
       {tab === 'obras-sociales' ? <section className="section-card"><PayersPanel canWrite={can('coverage:manage') || can('billing:write')} /></section> : null}
     </div>
