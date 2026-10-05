@@ -29,7 +29,8 @@ Thumbs.db
 *.pid
 
 # Coverage
-coverage/
+/coverage/
+apps/*/coverage/
 
 # Vite
 .vite/
@@ -39,3 +40,6 @@ coverage/
 
 # Copias locales de datos (nunca al repo)
 db/backups/
+
+# Archivos ficticios para pruebas manuales
+datos-prueba/
