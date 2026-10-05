@@ -2,6 +2,7 @@ import Ajv from 'ajv';
 import { patientUpdateSchema } from '../modules/patients/schemas.js';
 import { reconciliationRequestSchema } from '../modules/billing/schemas.js';
 import { ROLES } from '../modules/shared/access.js';
+import { appointmentCreateSchema, appointmentUpdateSchema, scheduleReplaceSchema } from '../modules/secretary/schemas.js';
 import {
   tumorCreateSchema,
   tumorUpdateSchema,
@@ -41,30 +42,9 @@ const validators = {
   tumorUpdate: ajv.compile(tumorUpdateSchema),
   treatmentCreate: ajv.compile(treatmentCreateSchema),
   treatmentUpdate: ajv.compile(treatmentUpdateSchema),
-  appointmentCreate: ajv.compile({
-    type: 'object',
-    additionalProperties: true,
-    required: ['patient_id', 'date', 'time'],
-    properties: {
-      patient_id: { type: 'string', minLength: 1 },
-      date: { type: 'string', minLength: 1 },
-      time: { type: 'string', minLength: 1 },
-      note: { type: 'string' },
-      status: { type: 'string' },
-    },
-  }),
-  appointmentUpdate: ajv.compile({
-    type: 'object',
-    additionalProperties: true,
-    minProperties: 1,
-    properties: {
-      patient_id: { type: 'string', minLength: 1 },
-      date: { type: 'string', minLength: 1 },
-      time: { type: 'string', minLength: 1 },
-      note: { type: 'string' },
-      status: { type: 'string' },
-    },
-  }),
+  appointmentCreate: ajv.compile(appointmentCreateSchema),
+  appointmentUpdate: ajv.compile(appointmentUpdateSchema),
+  scheduleReplace: ajv.compile(scheduleReplaceSchema),
   patientUpdate: ajv.compile(patientUpdateSchema),
   iaConsult: ajv.compile({
     type: 'object',

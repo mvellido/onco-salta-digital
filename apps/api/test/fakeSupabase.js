@@ -17,6 +17,9 @@ class Query {
   update(values) { this.op = 'update'; this.payload = values; return this; }
   delete() { this.op = 'delete'; return this; }
   eq(col, val) { this.filters.push((r) => r[col] === val); return this; }
+  neq(col, val) { this.filters.push((r) => r[col] !== val); return this; }
+  gte(col, val) { this.filters.push((r) => r[col] >= val); return this; }
+  lte(col, val) { this.filters.push((r) => r[col] <= val); return this; }
   is(col, val) { this.filters.push((r) => (r[col] ?? null) === val); return this; }
   not(col, op, val) { this.filters.push((r) => (r[col] ?? null) !== val); return this; }
   in(col, vals) { this.filters.push((r) => vals.includes(r[col])); return this; }
