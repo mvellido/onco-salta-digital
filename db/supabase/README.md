@@ -7,6 +7,14 @@ Todo el esquema vive en `migrations/`. Son las únicas fuentes de verdad: no hay
 | `20261005_0001_schema.sql` | Tablas, roles por defecto, trigger de invitaciones, bloqueo de borrado de pacientes y auditoría inmutable |
 | `20261005_0002_security.sql` | Funciones de permisos, políticas RLS y el bucket privado `medical-history` |
 
+## Instalación en el proyecto actual (compartido con la plataforma de cursos)
+
+Mientras dure el desarrollo, Onco-Salta usa el mismo proyecto de Supabase que la plataforma de cursos. Para ese caso está `setup/INSTALAR_proyecto_compartido.sql`: borra solo el esquema anterior de Onco-Salta, aplica las dos migraciones y deja a mvellido@gmail.com como administrador. No toca las tablas del curso ni el bucket `recursos`.
+
+En este proyecto **no** hay que desactivar el registro público (paso 3 de abajo), porque lo usa el curso. Un registro nuevo queda con perfil inactivo y sin acceso a Onco-Salta.
+
+Cuando el sistema esté listo para usarse, se pasa a un proyecto dedicado siguiendo los pasos de abajo.
+
 ## Puesta en marcha en un proyecto nuevo
 
 1. **Crear el proyecto** en [supabase.com](https://supabase.com). Elegí la región São Paulo (`sa-east-1`), la más cercana a Salta.

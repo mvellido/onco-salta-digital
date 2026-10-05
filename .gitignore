@@ -36,3 +36,6 @@ coverage/
 
 # Supabase local files
 .supabase/
+
+# Copias locales de datos (nunca al repo)
+db/backups/

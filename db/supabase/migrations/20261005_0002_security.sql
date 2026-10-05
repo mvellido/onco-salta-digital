@@ -71,7 +71,7 @@ exception when others then
 end;
 $$;
 
-revoke execute on function public.handle_new_user() from public, anon, authenticated;
+revoke execute on function public.onco_handle_new_user() from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- RLS
