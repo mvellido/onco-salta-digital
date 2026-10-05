@@ -7,8 +7,8 @@ export function buildPatientContextBlock(patient, timeline = []) {
         .join('\n')
     : '- Sin eventos recientes cargados';
 
+  // Sin nombre, DNI ni contacto: el contexto sale del país hacia Gemini.
   return `
-Paciente: ${patient.full_name || 'No especificado'}
 Diagnóstico: ${patient.diagnosis_summary || 'No especificado'}
 Estadio: ${patient.tumor_stage || 'No especificado'}
 Localización: ${patient.tumor_location || 'No especificada'}

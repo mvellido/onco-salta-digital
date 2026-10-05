@@ -237,14 +237,10 @@ function PatientDetail({ user, initialPatient = null, initialEvents = null }) {
     });
   };
 
+  // Debe coincidir con las políticas de storage.objects: patients/<patient_id>/...
   const buildAttachmentPath = (eventId, fileName) => {
-    const doctorId = user?.id;
-    if (!doctorId) {
-      throw new Error('No se encontró el UID del médico. Vuelve a iniciar sesión para continuar.');
-    }
-
-    const safeName = fileName.replace(/\s+/g, '-').toLowerCase();
-    return `${doctorId}/patient_${patientId}/event_${eventId}/${Date.now()}-${safeName}`;
+    const safeName = fileName.replace(/[^\w.-]+/g, '-').toLowerCase();
+    return `patients/${patientId}/event_${eventId}/${Date.now()}-${safeName}`;
   };
 
   const uploadAttachments = async (eventId) => {
@@ -462,7 +458,7 @@ function PatientDetail({ user, initialPatient = null, initialEvents = null }) {
             <span>Nombre completo</span>
           </div>
           <div className="detail-row">
-            <strong>{patient?.document_number || 'Sin registro'}</strong>
+            <strong>{patient?.dni || 'Sin registro'}</strong>
             <span>Documento</span>
           </div>
           <div className="detail-row">

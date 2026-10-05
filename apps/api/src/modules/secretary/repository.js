@@ -1,12 +1,17 @@
+// patientIds null = sin filtro (usuarios con scope:all_patients).
 export async function listAppointmentsByPatientIds(supabase, patientIds = []) {
-  if (!patientIds.length) {
+  if (patientIds && patientIds.length === 0) {
     return [];
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('appointments')
-    .select('id, patient_id, date, time, note, status, created_at, updated_at, patient:patients(full_name)')
-    .in('patient_id', patientIds)
+    .select('id, patient_id, date, time, note, status, created_at, updated_at, patient:patients(full_name)');
+  if (patientIds) {
+    query = query.in('patient_id', patientIds);
+  }
+
+  const { data, error } = await query
     .order('date', { ascending: true })
     .order('time', { ascending: true });
 

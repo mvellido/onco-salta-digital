@@ -12,7 +12,22 @@ export function normalizePatientRow(row = {}) {
     tumor_stage: row.tumor_stage || null,
     molecular_markers: row.molecular_markers || {},
     assigned_doctor_id: row.assigned_doctor_id || null,
+    archived_at: row.archived_at || null,
+    archive_reason: row.archive_reason || null,
     created_at: row.created_at || null,
     updated_at: row.updated_at || null,
+  };
+}
+
+// Vista para roles sin acceso clínico (secretaría, finanzas): sin diagnóstico ni datos tumorales.
+export function toBasicPatient(patient) {
+  return {
+    id: patient.id,
+    full_name: patient.full_name,
+    dni: patient.dni,
+    contact: patient.contact,
+    status: patient.status,
+    assigned_doctor_id: patient.assigned_doctor_id,
+    archived_at: patient.archived_at,
   };
 }

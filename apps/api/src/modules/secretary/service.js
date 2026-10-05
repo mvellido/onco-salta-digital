@@ -1,10 +1,3 @@
-const secretaryRolePermissions = {
-  secretary: ['appointments:read', 'appointments:write', 'notifications:send'],
-  doctor: ['appointments:read', 'appointments:write', 'patients:read', 'patients:write'],
-  finance: ['billing:read', 'billing:write'],
-  admin: ['*'],
-};
-
 export function hasScheduleConflict(appointments = [], candidate = {}, currentAppointmentId = null) {
   return appointments.some((appointment) => {
     if (currentAppointmentId && appointment.id === currentAppointmentId) {
@@ -21,23 +14,14 @@ export function hasScheduleConflict(appointments = [], candidate = {}, currentAp
   });
 }
 
+// Todavía no hay un canal de envío conectado (Etapa 4): la notificación queda
+// registrada en auditoría con estado "not_sent" para no informar un envío falso.
 export function buildNotificationDispatch({ channel = 'in-app', recipients = [], message = '' }) {
   return {
     channel,
     recipients,
     message,
-    status: recipients.length ? 'queued' : 'skipped',
-    dispatchedAt: new Date().toISOString(),
-  };
-}
-
-export function getRolePermissionsMap() {
-  return secretaryRolePermissions;
-}
-
-export function updateRolePermissions(currentMap, role, permissions) {
-  return {
-    ...currentMap,
-    [role]: permissions,
+    status: recipients.length ? 'not_sent' : 'skipped',
+    registeredAt: new Date().toISOString(),
   };
 }

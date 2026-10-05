@@ -11,8 +11,6 @@ const __dirname = path.dirname(__filename);
 // 🔧 CORREGIDO: Subir 3 niveles desde apps/api/src/ hasta la raíz del proyecto
 const schemaPath = path.join(__dirname, '../../../specs/001-onco-salta-digital/patient-schema.json');
 
-console.log('📂 Buscando schema en:', schemaPath);
-
 // Leer el archivo JSON
 const patientSchema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
 
@@ -30,10 +28,8 @@ const validate = ajv.compile(patientSchema);
 export const validatePatient = (data) => {
   const valid = validate(data);
   if (!valid) {
-    console.error('❌ Errores de validación:', validate.errors);
     return { valid: false, errors: validate.errors };
   }
-  console.log('✅ Paciente válido según el esquema.');
   return { valid: true, errors: null };
 };
 
@@ -52,7 +48,7 @@ export const validatePatientFormatted = (data) => {
   const errorsFormatted = result.errors.map(err => ({
     campo: err.instancePath.replace('/', ''),
     mensaje: err.message,
-    valor: err.params?.value || err.data || 'N/A'
+    parametro: err.params || {}
   }));
   
   return { isValid: false, errorsFormatted: errorsFormatted };

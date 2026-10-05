@@ -1,10 +1,10 @@
-export async function getPatientContextForAI(supabase, patientId, doctorId) {
-  const { data: patient, error: patientError } = await supabase
-    .from('patients')
-    .select('*')
-    .eq('id', patientId)
-    .eq('assigned_doctor_id', doctorId)
-    .maybeSingle();
+import { scopePatientsQuery } from '../shared/access.js';
+
+export async function getPatientContextForAI(supabase, patientId, ctx) {
+  const { data: patient, error: patientError } = await scopePatientsQuery(
+    supabase.from('patients').select('*').eq('id', patientId),
+    ctx
+  ).maybeSingle();
 
   if (patientError) throw patientError;
   if (!patient) return null;

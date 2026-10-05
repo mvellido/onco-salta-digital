@@ -1,6 +1,7 @@
 import Ajv from 'ajv';
 import { patientUpdateSchema } from '../modules/patients/schemas.js';
 import { reconciliationRequestSchema } from '../modules/billing/schemas.js';
+import { ROLES } from '../modules/shared/access.js';
 
 const ajv = new Ajv({ allErrors: true, removeAdditional: false });
 
@@ -119,7 +120,41 @@ const validators = {
       message: { type: 'string', minLength: 1 },
     },
   }),
-  secretaryPermissionUpdate: ajv.compile({
+  patientArchive: ajv.compile({
+    type: 'object',
+    required: ['reason'],
+    additionalProperties: false,
+    properties: {
+      reason: { type: 'string', minLength: 3, maxLength: 500 },
+    },
+  }),
+  patientCreateMeta: ajv.compile({
+    type: 'object',
+    additionalProperties: true,
+    properties: {
+      assigned_doctor_id: { type: 'string', minLength: 1 },
+    },
+  }),
+  adminInvitation: ajv.compile({
+    type: 'object',
+    required: ['email', 'role'],
+    additionalProperties: false,
+    properties: {
+      email: { type: 'string', pattern: '^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$', maxLength: 254 },
+      role: { type: 'string', enum: ROLES },
+      full_name: { type: 'string', maxLength: 200 },
+    },
+  }),
+  adminUserUpdate: ajv.compile({
+    type: 'object',
+    minProperties: 1,
+    additionalProperties: false,
+    properties: {
+      role: { type: 'string', enum: ROLES },
+      active: { type: 'boolean' },
+    },
+  }),
+  rolePermissionUpdate: ajv.compile({
     type: 'object',
     additionalProperties: true,
     required: ['role', 'permissions'],

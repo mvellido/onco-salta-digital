@@ -11,7 +11,7 @@ El backend de Onco-Salta Digital es una API Fastify que se conecta a Supabase pa
 Las variables de entorno se carga desde `apps/api/.env.local`:
 
 ```env
-SUPABASE_URL=https://waoglprdtwybxroleorj.supabase.co
+SUPABASE_URL=https://<tu-proyecto>.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 NODE_ENV=development
 PORT=3001
@@ -115,7 +115,7 @@ services:
 En el dashboard de Render, crear las siguientes variables:
 
 1. **SUPABASE_URL**
-   - Valor: `https://waoglprdtwybxroleorj.supabase.co`
+   - Valor: `https://<tu-proyecto>.supabase.co`
 
 2. **SUPABASE_SERVICE_ROLE_KEY**
    - Valor: La clave de rol de servicio desde la consola de Supabase

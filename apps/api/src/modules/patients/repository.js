@@ -1,52 +1,48 @@
+import { scopePatientsQuery } from '../shared/access.js';
 import { normalizePatientRow } from './models.js';
 
-export async function listPatientsByDoctor(supabase, doctorId) {
-  const { data, error } = await supabase
-    .from('patients')
-    .select('*')
-    .eq('assigned_doctor_id', doctorId)
-    .order('created_at', { ascending: false });
+export async function listPatients(supabase, ctx, { archived = false } = {}) {
+  let query = scopePatientsQuery(supabase.from('patients').select('*'), ctx);
+  query = archived ? query.not('archived_at', 'is', null) : query.is('archived_at', null);
+
+  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) throw error;
   return (data || []).map(normalizePatientRow);
 }
 
-export async function createPatientForDoctor(supabase, doctorId, payload) {
-  const datosGenerales = payload?.datos_generales || {};
-  const historiaTumoral = payload?.historia_tumoral || {};
-
+export async function createPatient(supabase, row) {
   const { data, error } = await supabase
     .from('patients')
-    .insert([
-      {
-        full_name: datosGenerales.nombre_completo,
-        dni: datosGenerales.dni || null,
-        birth_date: datosGenerales.fecha_nacimiento || null,
-        gender: datosGenerales.sexo || 'No especificado',
-        contact: datosGenerales.contacto || null,
-        diagnosis_summary: historiaTumoral.diagnostico_resumen || '',
-        tumor_location: historiaTumoral.ubicacion || null,
-        tumor_stage: historiaTumoral.estadio || null,
-        molecular_markers: historiaTumoral.marcadores_moleculares || {},
-        assigned_doctor_id: doctorId,
-      },
-    ])
-    .select();
+    .insert([row])
+    .select()
+    .single();
 
   if (error) throw error;
-  return data?.[0] ? normalizePatientRow(data[0]) : null;
+  return normalizePatientRow(data);
 }
 
-export async function getPatientByIdForDoctor(supabase, patientId, doctorId) {
-  const { data, error } = await supabase
-    .from('patients')
-    .select('*')
-    .eq('id', patientId)
-    .eq('assigned_doctor_id', doctorId)
-    .maybeSingle();
+export async function getPatientById(supabase, patientId, ctx) {
+  const { data, error } = await scopePatientsQuery(
+    supabase.from('patients').select('*').eq('id', patientId),
+    ctx
+  ).maybeSingle();
 
   if (error) throw error;
   return data ? normalizePatientRow(data) : null;
+}
+
+export async function isActiveDoctor(supabase, profileId) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('id', profileId)
+    .eq('role', 'doctor')
+    .eq('active', true)
+    .maybeSingle();
+
+  if (error) throw error;
+  return Boolean(data);
 }
 
 export async function getPatientTimeline(supabase, patientId) {
@@ -77,28 +73,11 @@ export async function getEventAttachmentCounts(supabase, eventIds) {
   }, {});
 }
 
-export async function updatePatientByIdForDoctor(supabase, patientId, doctorId, updates) {
-  const { data, error } = await supabase
-    .from('patients')
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', patientId)
-    .eq('assigned_doctor_id', doctorId)
-    .select();
-
-  if (error) throw error;
-  return data?.[0] ? normalizePatientRow(data[0]) : null;
-}
-
-export async function deletePatientByIdForDoctor(supabase, patientId, doctorId) {
-  const { data, error } = await supabase
-    .from('patients')
-    .delete()
-    .eq('id', patientId)
-    .eq('assigned_doctor_id', doctorId)
-    .select();
+export async function updatePatientById(supabase, patientId, ctx, updates) {
+  const { data, error } = await scopePatientsQuery(
+    supabase.from('patients').update(updates).eq('id', patientId),
+    ctx
+  ).select();
 
   if (error) throw error;
   return data?.[0] ? normalizePatientRow(data[0]) : null;

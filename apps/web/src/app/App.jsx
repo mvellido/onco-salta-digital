@@ -2,38 +2,25 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, Link } from 'react-router-dom';
 import PatientDetail from './PatientDetail';
 import { supabase } from './supabaseClient';
-import { API_URL } from '../config';
 import { useClinicalShortcuts } from '../components/useClinicalShortcuts';
 import PatientRegistrationForm from '../features/patients/PatientRegistrationForm';
 import PatientsTable from '../features/patients/PatientsTable';
 import AIAssistantPanel from '../features/ai/AIAssistantPanel';
 import BillingDashboard from '../features/billing/BillingDashboard';
 import SecretaryAgenda from '../features/secretary/SecretaryAgenda';
+import AdminUsersPanel, { ROLE_LABELS } from '../features/admin/AdminUsersPanel';
+import { apiFetch, apiJson } from '../lib/api';
 import './styles.css';
 
-const doctorInviteCode = import.meta.env.VITE_DOCTOR_INVITE_CODE || '';
-
-function getAuthErrorMessage(error, isSignUp = false) {
+function getAuthErrorMessage(error) {
   const message = error?.message || '';
 
   if (message.includes('Invalid login credentials') || message.includes('invalid login')) {
-    return 'Credenciales inválidas. Si acabas de crear la cuenta, confirma tu correo antes de iniciar sesión.';
+    return 'Email o contraseña incorrectos.';
   }
 
   if (message.includes('Email not confirmed') || message.includes('email not confirmed')) {
     return 'Tu cuenta aún no está confirmada. Revisa tu correo y confirma la dirección antes de entrar.';
-  }
-
-  if (message.includes('User already registered') || message.includes('already registered')) {
-    return 'Ese correo ya está registrado. Intenta iniciar sesión en lugar de crear la cuenta.';
-  }
-
-  if (message.includes('signup') || message.includes('sign up')) {
-    return 'No se pudo crear la cuenta. Verifica que el proveedor Email esté habilitado en Supabase Auth.';
-  }
-
-  if (isSignUp) {
-    return 'No se pudo crear la cuenta. Revisa la configuración de Supabase Auth y el correo ingresado.';
   }
 
   return 'No se pudo iniciar sesión. Verifica que Supabase Auth esté habilitado con Email/Password y que las credenciales sean correctas.';
@@ -146,79 +133,36 @@ const getAlertStyle = (type) => {
 
 function AuthPage({ onSignIn }) {
   const navigate = useNavigate();
-  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [invitationCode, setInvitationCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setLoading(true);
     setError('');
-    setSuccess('');
 
-    if (isSignUp && doctorInviteCode && invitationCode.trim() !== doctorInviteCode) {
-      setError('El código de invitación es incorrecto.');
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (signInError) {
+      setError(getAuthErrorMessage(signInError));
       setLoading(false);
       return;
     }
 
-    if (isSignUp) {
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { role: 'doctor' } },
-      });
-
-      if (signUpError) {
-        setError(getAuthErrorMessage(signUpError, true));
-        setLoading(false);
-        return;
-      }
-
-      if (data.session) {
-        onSignIn?.(data.session);
-        await Promise.resolve();
-        navigate('/');
-      } else {
-        setSuccess('Registro solicitado. Revisa tu correo para confirmar la cuenta.');
-      }
-    } else {
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-
-      if (signInError) {
-        setError(getAuthErrorMessage(signInError, false));
-        setLoading(false);
-        return;
-      }
-
-      onSignIn?.(data.session);
-      await Promise.resolve();
-      navigate('/');
-    }
-
+    onSignIn?.(data.session);
+    await Promise.resolve();
+    navigate('/');
     setLoading(false);
   };
 
   return (
-    <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: 520, margin: '40px auto', padding: 24 }}>
+    <div className="auth-page">
       <h1>Onco-Salta Digital</h1>
-      <p>{isSignUp ? 'Crear cuenta de médico' : 'Iniciar sesión para acceder a la agenda clínica.'}</p>
+      <p>Iniciá sesión para acceder a la plataforma clínica.</p>
 
-      {error ? (
-        <div style={{ marginBottom: 16, padding: 12, border: '1px solid #f5c2c7', background: '#fff5f5', color: '#842029' }}>
-          {error}
-        </div>
-      ) : null}
-
-      {success ? (
-        <div style={{ marginBottom: 16, padding: 12, border: '1px solid #b7e4c7', background: '#f0fff4', color: '#2f6f4e' }}>
-          {success}
-        </div>
-      ) : null}
+      {error ? <div className="message message--error" role="alert">{error}</div> : null}
 
       <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 10 }}>
         <label>
@@ -230,29 +174,80 @@ function AuthPage({ onSignIn }) {
           <input aria-label="Contraseña" autoComplete="current-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </label>
 
-        {isSignUp ? (
-          <label>
-            Código de invitación
-            <input
-              aria-label="Código de invitación"
-              type="text"
-              value={invitationCode}
-              onChange={(e) => setInvitationCode(e.target.value)}
-              placeholder={doctorInviteCode ? 'Ingresa el código' : 'Opcional'}
-            />
-          </label>
-        ) : null}
-
         <button type="submit" disabled={loading}>
-          {loading ? (isSignUp ? 'Creando cuenta...' : 'Ingresando...') : isSignUp ? 'Crear cuenta' : 'Iniciar sesión'}
+          {loading ? 'Ingresando...' : 'Iniciar sesión'}
         </button>
       </form>
 
-      <p style={{ marginTop: 16 }}>
-        <button type="button" onClick={() => { setIsSignUp((current) => !current); setError(''); setSuccess(''); }}>
-          {isSignUp ? 'Volver a iniciar sesión' : 'Registrar un médico'}
-        </button>
+      <p style={{ marginTop: 16, color: 'var(--text-muted)' }}>
+        El acceso es solo por invitación. Si necesitás una cuenta, pedísela al administrador del centro.
       </p>
+    </div>
+  );
+}
+
+// Destino del link de invitación: Supabase ya abrió la sesión desde la URL;
+// acá la persona define su contraseña.
+function SetPasswordPage({ user }) {
+  const navigate = useNavigate();
+  const [password, setPassword] = useState('');
+  const [confirmation, setConfirmation] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError('');
+
+    if (password.length < 10) {
+      setError('La contraseña debe tener al menos 10 caracteres.');
+      return;
+    }
+    if (password !== confirmation) {
+      setError('Las contraseñas no coinciden.');
+      return;
+    }
+
+    setSaving(true);
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    setSaving(false);
+
+    if (updateError) {
+      setError(updateError.message || 'No se pudo guardar la contraseña.');
+      return;
+    }
+
+    navigate('/');
+  };
+
+  if (!user) {
+    return (
+      <div className="auth-page">
+        <h1>Enlace vencido o inválido</h1>
+        <p>Pedile al administrador que te reenvíe la invitación.</p>
+        <button type="button" onClick={() => navigate('/login')}>Ir al inicio de sesión</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="auth-page">
+      <h1>Bienvenida/o a Onco-Salta Digital</h1>
+      <p>Creá tu contraseña para <strong>{user.email}</strong>.</p>
+
+      {error ? <div className="message message--error" role="alert">{error}</div> : null}
+
+      <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 10 }}>
+        <label>
+          Nueva contraseña
+          <input id="new-password" autoComplete="new-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={10} />
+        </label>
+        <label>
+          Repetir contraseña
+          <input id="confirm-password" autoComplete="new-password" type="password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} required />
+        </label>
+        <button type="submit" disabled={saving}>{saving ? 'Guardando...' : 'Guardar y entrar'}</button>
+      </form>
     </div>
   );
 }
@@ -275,6 +270,12 @@ function LoginRoute({ user, onSignIn }) {
 
 function Dashboard({ user, onSignOut }) {
   const navigate = useNavigate();
+  const [me, setMe] = useState(null);
+  const [meError, setMeError] = useState('');
+  const can = useCallback((permission) => Boolean(me?.permissions?.includes(permission)), [me]);
+  const [showArchived, setShowArchived] = useState(false);
+  const [archivingPatient, setArchivingPatient] = useState(null);
+  const [archiveReason, setArchiveReason] = useState('');
   const [patients, setPatients] = useState([]);
   const [loadingPatients, setLoadingPatients] = useState(false);
   const [savingPatient, setSavingPatient] = useState(false);
@@ -322,9 +323,6 @@ function Dashboard({ user, onSignOut }) {
   const [turnsFilterPatient, setTurnsFilterPatient] = useState('');
   const [notificationForm, setNotificationForm] = useState({ channel: 'in-app', recipients: '', message: '' });
   const [notificationLoading, setNotificationLoading] = useState(false);
-  const [permissionForm, setPermissionForm] = useState({ role: 'secretary', permissions: 'appointments:read, appointments:write, notifications:send' });
-  const [permissionsState, setPermissionsState] = useState({});
-  const [permissionsLoading, setPermissionsLoading] = useState(false);
   const [iaPatientId, setIaPatientId] = useState('');
   const [iaQuestion, setIaQuestion] = useState('');
   const [iaAnswer, setIaAnswer] = useState('');
@@ -364,41 +362,6 @@ function Dashboard({ user, onSignOut }) {
     }
   };
 
-  const apiFetch = useCallback(async (path, options = {}) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-
-    const headers = new Headers(options.headers || {});
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
-
-    if (options.body && !headers.has('Content-Type')) {
-      headers.set('Content-Type', 'application/json');
-    }
-
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    const fallbackBaseUrl = typeof window !== 'undefined' && window.location?.origin
-      ? window.location.origin
-      : 'http://localhost';
-    const requestUrl = API_URL ? `${API_URL}${normalizedPath}` : `${fallbackBaseUrl}${normalizedPath}`;
-
-    const response = await fetch(requestUrl, {
-      ...options,
-      headers,
-    });
-
-    const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('text/html')) {
-      const configHint = API_URL
-        ? `Revisa VITE_API_URL (${API_URL}) y asegurate de que apunte al backend API.`
-        : 'Definí VITE_API_URL para Preview/Production apuntando al backend API.';
-      throw new Error(`La API devolvió HTML en lugar de JSON para ${normalizedPath}. ${configHint}`);
-    }
-
-    return response;
-  }, []);
-
   // Pacientes filtrados por búsqueda y estado
   const filteredPatients = useMemo(() => {
     return patients.filter((patient) => {
@@ -424,7 +387,7 @@ function Dashboard({ user, onSignOut }) {
     setMessage((current) => (current.type === 'error' ? { type: '', text: '' } : current));
 
     try {
-      const response = await apiFetch('/patients');
+      const response = await apiFetch(showArchived ? '/patients?archived=true' : '/patients');
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Error al obtener pacientes');
@@ -440,7 +403,7 @@ function Dashboard({ user, onSignOut }) {
     }
 
     setLoadingPatients(false);
-  }, [apiFetch]);
+  }, [showArchived]);
 
   const loadTurns = useCallback(async () => {
     try {
@@ -456,7 +419,7 @@ function Dashboard({ user, onSignOut }) {
       setTurns([]);
       setTurnsMessage({ type: 'error', text: 'No se pudieron cargar los turnos desde el servidor.' });
     }
-  }, [apiFetch]);
+  }, []);
 
   const loadBillingReport = useCallback(async () => {
     setBillingLoading(true);
@@ -476,7 +439,7 @@ function Dashboard({ user, onSignOut }) {
     } finally {
       setBillingLoading(false);
     }
-  }, [apiFetch]);
+  }, []);
 
   const resetTurnForm = () => {
     setTurnForm({ patientId: '', date: '', time: '', note: '' });
@@ -598,23 +561,6 @@ function Dashboard({ user, onSignOut }) {
     }
   };
 
-  const loadSecretaryPermissions = useCallback(async () => {
-    setPermissionsLoading(true);
-    try {
-      const response = await apiFetch('/secretary/permissions');
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || 'No se pudieron cargar los permisos');
-      }
-
-      setPermissionsState(result.roles || {});
-    } catch (error) {
-      setTurnsMessage({ type: 'error', text: error.message || 'No se pudieron cargar los permisos.' });
-    } finally {
-      setPermissionsLoading(false);
-    }
-  }, [apiFetch]);
-
   const handleSendSecretaryNotification = async (event) => {
     event.preventDefault();
     setNotificationLoading(true);
@@ -640,42 +586,12 @@ function Dashboard({ user, onSignOut }) {
         throw new Error(result.error || 'No se pudo enviar la notificación');
       }
 
-      setTurnsMessage({ type: 'success', text: `Notificación encolada por ${result.channel} (${result.recipients.length} destinatarios).` });
+      setTurnsMessage({ type: 'success', text: `Aviso registrado (${result.recipients.length} destinatarios). Todavía no se envía por ${result.channel}.` });
       setNotificationForm({ channel: notificationForm.channel, recipients: '', message: '' });
     } catch (error) {
       setTurnsMessage({ type: 'error', text: error.message || 'No se pudo enviar la notificación.' });
     } finally {
       setNotificationLoading(false);
-    }
-  };
-
-  const handleSaveSecretaryPermissions = async (event) => {
-    event.preventDefault();
-    setPermissionsLoading(true);
-    setTurnsMessage({ type: '', text: '' });
-
-    try {
-      const permissions = permissionForm.permissions
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean);
-
-      const response = await apiFetch('/secretary/permissions', {
-        method: 'PATCH',
-        body: JSON.stringify({ role: permissionForm.role, permissions }),
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || 'No se pudieron guardar los permisos');
-      }
-
-      setPermissionsState(result.roles || {});
-      setTurnsMessage({ type: 'success', text: `Permisos actualizados para el rol ${result.role}.` });
-    } catch (error) {
-      setTurnsMessage({ type: 'error', text: error.message || 'No se pudieron guardar los permisos.' });
-    } finally {
-      setPermissionsLoading(false);
     }
   };
 
@@ -948,11 +864,21 @@ function Dashboard({ user, onSignOut }) {
   }, []);
 
   useEffect(() => {
-    loadPatients();
-    loadTurns();
-    loadBillingReport();
-    loadSecretaryPermissions();
-  }, [loadPatients, loadTurns, loadBillingReport, loadSecretaryPermissions]);
+    apiJson('/me')
+      .then(setMe)
+      .catch((error) => setMeError(error.message || 'No se pudo cargar tu perfil.'));
+  }, []);
+
+  useEffect(() => {
+    if (!me) return;
+    if (me.permissions.includes('patients:read') || me.permissions.includes('patients:read_basic')) loadPatients();
+  }, [me, loadPatients]);
+
+  useEffect(() => {
+    if (!me) return;
+    if (me.permissions.includes('appointments:read')) loadTurns();
+    if (me.permissions.includes('billing:read')) loadBillingReport();
+  }, [me, loadTurns, loadBillingReport]);
 
   // Carga automática al cambiar de paciente en el formulario
   useEffect(() => {
@@ -1029,31 +955,46 @@ function Dashboard({ user, onSignOut }) {
     setSavingPatient(false);
   };
 
-  const handleDelete = async (patient) => {
-    const confirmed = window.confirm(`¿Confirmás que querés eliminar a ${patient.full_name}?`);
-    if (!confirmed) {
-      return;
-    }
+  const handleArchive = async (event) => {
+    event.preventDefault();
+    if (!archivingPatient) return;
 
     try {
-      const response = await apiFetch(`/patients/${patient.id}`, {
-        method: 'DELETE'
+      const response = await apiFetch(`/patients/${archivingPatient.id}/archive`, {
+        method: 'POST',
+        body: JSON.stringify({ reason: archiveReason.trim() }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al eliminar paciente');
+        throw new Error(errorData.error || 'No se pudo archivar el paciente');
       }
 
-      setPatients((current) => current.filter((item) => item.id !== patient.id));
-      setMessage({ type: 'success', text: `Paciente eliminado: ${patient.full_name}` });
+      setPatients((current) => current.filter((item) => item.id !== archivingPatient.id));
+      setMessage({ type: 'success', text: `Paciente archivado: ${archivingPatient.full_name}. Su historia clínica se conserva.` });
+      setArchivingPatient(null);
+      setArchiveReason('');
     } catch (error) {
-      setMessage({ type: 'error', text: error.message || 'No se pudo eliminar el paciente.' });
+      setMessage({ type: 'error', text: error.message || 'No se pudo archivar el paciente.' });
     }
   };
 
-  
-  const handleEdit = (patient) => {
+  const handleRestore = async (patient) => {
+    try {
+      const response = await apiFetch(`/patients/${patient.id}/restore`, { method: 'POST' });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'No se pudo reactivar el paciente');
+      }
+
+      setPatients((current) => current.filter((item) => item.id !== patient.id));
+      setMessage({ type: 'success', text: `Paciente reactivado: ${patient.full_name}` });
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message || 'No se pudo reactivar el paciente.' });
+    }
+  };
+
+    const handleEdit = (patient) => {
   setEditingPatient(patient);
   setEditingFormData({
     full_name: patient.full_name || '',
@@ -1077,28 +1018,23 @@ function Dashboard({ user, onSignOut }) {
 
     setSavingPatient(true);
 
-    const { error: updateError } = await supabase
-      .from('patients')
-      .update({
+    const response = await apiFetch(`/patients/${editingPatient.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
         full_name: editingFormData.full_name,
         diagnosis_summary: editingFormData.diagnosis_summary,
         status: editingFormData.status,
         dni: editingFormData.dni || null,
         birth_date: editingFormData.birth_date || null,
-        gender: editingFormData.gender || null,
+        gender: editingFormData.gender || 'No especificado',
         contact: editingFormData.contact || null,
-        document_number: editingFormData.dni || null,
-        date_of_birth: editingFormData.birth_date || null,
-        sex: editingFormData.gender || 'No especificado',
-      })
-      .eq('id', editingPatient.id);
+      }),
+    });
 
-    if (updateError) {
-      setMessage({ type: 'error', text: updateError.message || 'No se pudo actualizar el paciente.' });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      setMessage({ type: 'error', text: errorData.error || 'No se pudo actualizar el paciente.' });
       setSavingPatient(false);
-      if (updateError.status === 401 || updateError.code === 'PGRST301') {
-        supabase.auth.signOut();
-      }
       return;
     }
 
@@ -1180,6 +1116,30 @@ function Dashboard({ user, onSignOut }) {
     setSavingVitals(false);
   };
 
+  if (meError) {
+    return (
+      <div className="auth-page">
+        <h1>Sin acceso</h1>
+        <p>{meError}</p>
+        <button type="button" onClick={onSignOut}>Cerrar sesión</button>
+      </div>
+    );
+  }
+
+  if (!me) {
+    return <div style={{ padding: 24 }}>Cargando permisos…</div>;
+  }
+
+  const canSeePatients = can('patients:read') || can('patients:read_basic');
+  const sections = [
+    { id: 'pacientes', label: '🧑‍⚕️ Pacientes', aria: 'Sección de pacientes', visible: canSeePatients },
+    { id: 'turnos', label: '⏱️ Turnos', aria: 'Sección de secretaría y turnos', visible: can('appointments:read') },
+    { id: 'ia', label: '🤖 IA', aria: 'Sección de asistencia IA', visible: can('ai:use') && can('patients:read') },
+    { id: 'finanzas', label: '💳 Finanzas', aria: 'Sección financiera', visible: can('billing:read') },
+    { id: 'config', label: '⚙️ Configuración', aria: 'Sección de configuración', visible: true },
+  ].filter((section) => section.visible);
+  const currentSection = sections.some((section) => section.id === activeSection) ? activeSection : sections[0].id;
+
   return (
     <div className="app-shell">
       <header className="app-shell__header">
@@ -1192,8 +1152,8 @@ function Dashboard({ user, onSignOut }) {
         </div>
 
         <div className="app-shell__user">
-          <span>Sesión iniciada como</span>
-          <strong>{user?.email || 'Médico'}</strong>
+          <span>{ROLE_LABELS[me.role] || 'Sesión iniciada'}</span>
+          <strong>{me.full_name || user?.email}</strong>
         </div>
 
         <button type="button" onClick={onSignOut} className="secondary" style={{ whiteSpace: 'nowrap' }}>
@@ -1202,46 +1162,17 @@ function Dashboard({ user, onSignOut }) {
       </header>
 
       <nav className="app-shell__nav">
-        <button
-          type="button"
-          className={`main-nav-link ${activeSection === 'pacientes' ? 'main-nav-link--active' : ''}`}
-          onClick={() => setActiveSection('pacientes')}
-          aria-label="Sección de pacientes"
-        >
-          🧑‍⚕️ Pacientes
-        </button>
-        <button
-          type="button"
-          className={`main-nav-link ${activeSection === 'turnos' ? 'main-nav-link--active' : ''}`}
-          onClick={() => setActiveSection('turnos')}
-          aria-label="Sección de secretaría y turnos"
-        >
-          ⏱️ Turnos
-        </button>
-        <button
-          type="button"
-          className={`main-nav-link ${activeSection === 'ia' ? 'main-nav-link--active' : ''}`}
-          onClick={() => setActiveSection('ia')}
-          aria-label="Sección de asistencia IA"
-        >
-          🤖 IA
-        </button>
-        <button
-          type="button"
-          className={`main-nav-link ${activeSection === 'finanzas' ? 'main-nav-link--active' : ''}`}
-          onClick={() => setActiveSection('finanzas')}
-          aria-label="Sección financiera"
-        >
-          💳 Finanzas
-        </button>
-        <button
-          type="button"
-          className={`main-nav-link ${activeSection === 'config' ? 'main-nav-link--active' : ''}`}
-          onClick={() => setActiveSection('config')}
-          aria-label="Sección de configuración"
-        >
-          ⚙️ Configuración
-        </button>
+        {sections.map((section) => (
+          <button
+            key={section.id}
+            type="button"
+            className={`main-nav-link ${currentSection === section.id ? 'main-nav-link--active' : ''}`}
+            onClick={() => setActiveSection(section.id)}
+            aria-label={section.aria}
+          >
+            {section.label}
+          </button>
+        ))}
       </nav>
 
       <main className="main-content">
@@ -1249,7 +1180,7 @@ function Dashboard({ user, onSignOut }) {
           <section className="section-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
               <div>
-                <h2 style={{ margin: 0 }}>Bienvenido, {user?.email ? user.email.split('@')[0] : 'Doctor'}</h2>
+                <h2 style={{ margin: 0 }}>Hola, {me.full_name || user?.email?.split('@')[0]}</h2>
                 <p style={{ margin: '6px 0 0', color: 'var(--text-muted)' }}>
                   Plataforma clínica Onco-Salta Digital v1.0
                 </p>
@@ -1279,8 +1210,9 @@ function Dashboard({ user, onSignOut }) {
           </section>
         </div>
 
-        {activeSection === 'pacientes' && (
+        {currentSection === 'pacientes' && (
           <div className="page-grid">
+            {can('patients:write') ? (
             <section className="section-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
                 <div>
@@ -1298,6 +1230,7 @@ function Dashboard({ user, onSignOut }) {
                 formIsValid={formIsValid}
               />
             </section>
+            ) : null}
 
             <section className="section-card">
               <PatientsTable
@@ -1312,13 +1245,43 @@ function Dashboard({ user, onSignOut }) {
                 onViewHistory={(patientId) => navigate(`/patients/${patientId}`)}
                 onOpenVitals={handleOpenVitals}
                 onEdit={handleEdit}
-                onDelete={handleDelete}
+                onArchive={(patient) => { setArchivingPatient(patient); setArchiveReason(''); }}
+                onRestore={handleRestore}
+                canClinical={can('patients:read')}
+                canWrite={can('patients:write')}
+                canArchive={can('patients:archive')}
+                showArchived={showArchived}
+                setShowArchived={setShowArchived}
               />
+
+              {archivingPatient ? (
+                <form onSubmit={handleArchive} className="archive-panel" aria-label="Archivar paciente">
+                  <strong>Archivar a {archivingPatient.full_name}</strong>
+                  <p>El paciente deja de aparecer en la lista activa. Su historia clínica, adjuntos y auditoría se conservan y podés reactivarlo cuando quieras.</p>
+                  <label>
+                    Motivo
+                    <input
+                      id="archive-reason"
+                      type="text"
+                      value={archiveReason}
+                      onChange={(e) => setArchiveReason(e.target.value)}
+                      placeholder="Ej.: derivado a otro centro, carga duplicada"
+                      autoFocus
+                      required
+                      minLength={3}
+                    />
+                  </label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button type="submit" disabled={archiveReason.trim().length < 3}>Archivar</button>
+                    <button type="button" className="secondary" onClick={() => setArchivingPatient(null)}>Cancelar</button>
+                  </div>
+                </form>
+              ) : null}
             </section>
           </div>
         )}
 
-        {activeSection === 'turnos' && (
+        {currentSection === 'turnos' && (
           <SecretaryAgenda
             patients={patients}
             turns={turns}
@@ -1342,16 +1305,11 @@ function Dashboard({ user, onSignOut }) {
             setNotificationForm={setNotificationForm}
             notificationLoading={notificationLoading}
             onSendNotification={handleSendSecretaryNotification}
-            permissionForm={permissionForm}
-            setPermissionForm={setPermissionForm}
-            permissionsState={permissionsState}
-            permissionsLoading={permissionsLoading}
-            onSavePermissions={handleSaveSecretaryPermissions}
-            onLoadPermissions={loadSecretaryPermissions}
+            canNotify={can('notifications:send')}
           />
         )}
 
-        {activeSection === 'ia' && (
+        {currentSection === 'ia' && (
           <AIAssistantPanel
             patients={patients}
             iaPatientId={iaPatientId}
@@ -1373,7 +1331,7 @@ function Dashboard({ user, onSignOut }) {
           />
         )}
 
-        {activeSection === 'finanzas' && (
+        {currentSection === 'finanzas' && (
           <BillingDashboard
             patients={patients}
             billingReport={billingReport}
@@ -1391,21 +1349,17 @@ function Dashboard({ user, onSignOut }) {
           />
         )}
 
-        {activeSection === 'config' && (
-          <section className="section-card">
-            <h2>Configuración</h2>
-            <p style={{ color: 'var(--text-muted)' }}>Ajustá los parámetros de la plataforma y revisá las variables de entorno.</p>
-            <div style={{ marginTop: 18, display: 'grid', gap: 14 }}>
-              <div style={{ padding: 16, borderRadius: 18, background: '#f8fafc', border: '1px solid rgba(148, 163, 184, 0.16)' }}>
-                <strong>API</strong>
-                <p style={{ margin: '6px 0 0', color: 'var(--text-muted)' }}>La app usa `VITE_API_URL` para comunicar el frontend con el backend.</p>
-              </div>
-              <div style={{ padding: 16, borderRadius: 18, background: '#f8fafc', border: '1px solid rgba(148, 163, 184, 0.16)' }}>
-                <strong>Supabase</strong>
-                <p style={{ margin: '6px 0 0', color: 'var(--text-muted)' }}>Asegurate de que `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` estén configuradas en Vercel.</p>
-              </div>
-            </div>
-          </section>
+        {currentSection === 'config' && (
+          can('users:manage') ? (
+            <AdminUsersPanel currentUserId={me.id} />
+          ) : (
+            <section className="section-card">
+              <h2>Configuración</h2>
+              <p style={{ color: 'var(--text-muted)' }}>
+                Tu rol es <strong>{ROLE_LABELS[me.role]}</strong>. Para cambiar permisos o invitar personas, hablá con el administrador del centro.
+              </p>
+            </section>
+          )
         )}
       </main>
     </div>
@@ -1458,6 +1412,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginRoute user={user} onSignIn={(session) => setUser(session?.user ?? null)} />} />
+        <Route path="/bienvenida" element={<SetPasswordPage user={user} />} />
         <Route
           path="/"
           element={

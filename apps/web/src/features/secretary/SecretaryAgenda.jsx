@@ -21,18 +21,13 @@ export default function SecretaryAgenda({
   setNotificationForm,
   notificationLoading,
   onSendNotification,
-  permissionForm,
-  setPermissionForm,
-  permissionsState,
-  permissionsLoading,
-  onSavePermissions,
-  onLoadPermissions,
+  canNotify,
 }) {
   return (
     <div className="page-grid">
       <section className="section-card">
         <h2>Secretaría y agenda</h2>
-        <p style={{ marginTop: 4, color: 'var(--text-muted)' }}>Administrá turnos, notificaciones y permisos operativos.</p>
+        <p style={{ marginTop: 4, color: 'var(--text-muted)' }}>Administrá turnos y avisos al equipo.</p>
 
         {turnsMessage.text ? (
           <div role={turnsMessage.type === 'success' ? 'status' : 'alert'} aria-live={turnsMessage.type === 'success' ? 'polite' : 'assertive'} style={{ margin: '16px 0', padding: '12px 14px', borderRadius: 12, border: turnsMessage.type === 'success' ? '1px solid #86efac' : '1px solid #fda4af', background: turnsMessage.type === 'success' ? '#f0fdf4' : '#fef2f2', color: turnsMessage.type === 'success' ? '#166534' : '#b91c1c' }}>
@@ -158,8 +153,12 @@ export default function SecretaryAgenda({
         </div>
       </section>
 
+      {canNotify ? (
       <section className="section-card">
-        <h2>Notificaciones</h2>
+        <h2>Avisos</h2>
+        <p style={{ marginTop: 4, color: 'var(--text-muted)' }}>
+          Todavía no hay un canal de envío conectado: el aviso queda registrado en la auditoría, pero no le llega a nadie.
+        </p>
         <form onSubmit={onSendNotification} style={{ display: 'grid', gap: 10 }}>
           <label>
             Canal
@@ -188,47 +187,11 @@ export default function SecretaryAgenda({
             />
           </label>
           <button type="submit" className="secondary" disabled={notificationLoading || !notificationForm.message.trim()}>
-            {notificationLoading ? 'Enviando…' : 'Enviar notificación'}
+            {notificationLoading ? 'Registrando…' : 'Registrar aviso'}
           </button>
         </form>
       </section>
-
-      <section className="section-card">
-        <h2>Permisos por rol</h2>
-        <div style={{ marginBottom: 12 }}>
-          <button type="button" className="secondary" onClick={onLoadPermissions} disabled={permissionsLoading}>
-            {permissionsLoading ? 'Cargando…' : 'Recargar permisos'}
-          </button>
-        </div>
-
-        <form onSubmit={onSavePermissions} style={{ display: 'grid', gap: 10 }}>
-          <label>
-            Rol
-            <input
-              type="text"
-              value={permissionForm.role}
-              onChange={(e) => setPermissionForm({ ...permissionForm, role: e.target.value })}
-              placeholder="secretary"
-            />
-          </label>
-          <label>
-            Permisos (separados por coma)
-            <input
-              type="text"
-              value={permissionForm.permissions}
-              onChange={(e) => setPermissionForm({ ...permissionForm, permissions: e.target.value })}
-              placeholder="appointments:read, appointments:write"
-            />
-          </label>
-          <button type="submit" className="secondary" disabled={permissionsLoading || !permissionForm.role.trim()}>
-            Guardar permisos
-          </button>
-        </form>
-
-        <pre style={{ marginTop: 14, padding: 12, borderRadius: 10, border: '1px solid #e2e8f0', background: '#f8fafc', overflow: 'auto', fontSize: 12 }}>
-{JSON.stringify(permissionsState || {}, null, 2)}
-        </pre>
-      </section>
+      ) : null}
     </div>
   );
 }

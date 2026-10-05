@@ -1,24 +1,19 @@
 import { normalizeBillingRecord } from './models.js';
 
-export async function listBillingRecordsForDoctor(supabase, doctorId) {
-  const { data: patients, error: patientsError } = await supabase
-    .from('patients')
-    .select('id')
-    .eq('assigned_doctor_id', doctorId);
-
-  if (patientsError) {
-    throw patientsError;
-  }
-
-  const patientIds = (patients || []).map((patient) => patient.id);
-  if (patientIds.length === 0) {
+// patientIds null = sin filtro (usuarios con scope:all_patients).
+export async function listBillingRecords(supabase, patientIds) {
+  if (patientIds && patientIds.length === 0) {
     return [];
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('billing_records')
-    .select('id, patient_id, invoice_number, amount, currency, status, issued_at, paid_at, payer_name, notes, created_at')
-    .in('patient_id', patientIds)
+    .select('id, patient_id, invoice_number, amount, currency, status, issued_at, paid_at, payer_name, notes, created_at');
+  if (patientIds) {
+    query = query.in('patient_id', patientIds);
+  }
+
+  const { data, error } = await query
     .order('issued_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false, nullsFirst: false });
 

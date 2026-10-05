@@ -1,5 +1,7 @@
 # Despliegue del backend en Render y configuración de Vercel
 
+> Antes de desplegar, la base de datos tiene que estar creada: ver [db/supabase/README.md](db/supabase/README.md).
+
 Este documento guía el despliegue de `apps/api` en Render y la configuración de `VITE_API_URL` en Vercel para que la preview use el backend público.
 
 ## 1) Preparar y pushear cambios
@@ -15,8 +17,11 @@ git push origin main
 2. New → Web Service → Connect to GitHub → seleccionar `mvellido/onco-salta-digital` → rama `main`.
 3. Render detectará `apps/api/render.yaml`; confirmar creación del servicio `onco-salta-api`.
 4. En Environment → Environment Variables, añadir:
-   - `SUPABASE_URL` = `https://waoglprdtwybxroleorj.supabase.co`
+   - `SUPABASE_URL` = `https://<tu-proyecto>.supabase.co`
    - `SUPABASE_SERVICE_ROLE_KEY` = `<TU_SERVICE_ROLE_KEY>`
+   - `GEMINI_API_KEY` = `<TU_CLAVE_GEMINI>`
+   - `APP_URL` = `https://<tu-frontend>.vercel.app` (destino de los links de invitación)
+   - `CORS_ALLOWED_ORIGINS` = `https://<tu-frontend>.vercel.app`
 5. Lanzar deploy. Verificar logs y que `GET /health` responda `{ "status": "ok" }`.
 
 Comprobación rápida:

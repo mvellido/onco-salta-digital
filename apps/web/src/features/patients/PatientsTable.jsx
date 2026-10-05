@@ -20,16 +20,31 @@ export default function PatientsTable({
   onViewHistory,
   onOpenVitals,
   onEdit,
-  onDelete,
+  onArchive,
+  onRestore,
+  canClinical,
+  canWrite,
+  canArchive,
+  showArchived,
+  setShowArchived,
 }) {
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h2 style={{ margin: 0 }}>Pacientes registrados</h2>
-          <p style={{ margin: '6px 0 0', color: 'var(--text-muted)' }}>Búsqueda, filtros y acciones rápidas.</p>
+          <h2 style={{ margin: 0 }}>{showArchived ? 'Pacientes archivados' : 'Pacientes registrados'}</h2>
+          <p style={{ margin: '6px 0 0', color: 'var(--text-muted)' }}>
+            {showArchived ? 'Su historia clínica se conserva. Podés reactivarlos.' : 'Búsqueda, filtros y acciones rápidas.'}
+          </p>
         </div>
-        <button type="button" className="secondary" onClick={onReload}>Recargar lista</button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {canArchive ? (
+            <button type="button" className="secondary" aria-pressed={showArchived} onClick={() => setShowArchived(!showArchived)}>
+              {showArchived ? 'Ver activos' : 'Ver archivados'}
+            </button>
+          ) : null}
+          <button type="button" className="secondary" onClick={onReload}>Recargar lista</button>
+        </div>
       </div>
 
       <div className="form-grid" style={{ alignItems: 'end' }}>
@@ -55,14 +70,14 @@ export default function PatientsTable({
       ) : null}
 
       {patients.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>No hay pacientes cargados todavía.</p>
+        <p style={{ color: 'var(--text-muted)' }}>{showArchived ? 'No hay pacientes archivados.' : 'No hay pacientes cargados todavía.'}</p>
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 15 }}>
             <thead>
               <tr style={{ background: '#f8fafc', color: '#334155', textAlign: 'left' }}>
                 <th style={{ padding: '12px 10px', borderBottom: '1px solid #e2e8f0' }}>Paciente</th>
-                <th style={{ padding: '12px 10px', borderBottom: '1px solid #e2e8f0' }}>Diagnóstico</th>
+                {canClinical ? <th style={{ padding: '12px 10px', borderBottom: '1px solid #e2e8f0' }}>Diagnóstico</th> : null}
                 <th style={{ padding: '12px 10px', borderBottom: '1px solid #e2e8f0' }}>Estado</th>
                 <th style={{ padding: '12px 10px', borderBottom: '1px solid #e2e8f0' }}>Acciones</th>
               </tr>
@@ -76,25 +91,38 @@ export default function PatientsTable({
                       {[patient.dni && `DNI: ${patient.dni}`, patient.contact && `Contacto: ${patient.contact}`].filter(Boolean).join(' · ')}
                     </div>
                   </td>
-                  <td style={{ padding: '12px 10px', color: '#475569' }}>{patient.diagnosis_summary || 'Sin diagnóstico'}</td>
+                  {canClinical ? <td style={{ padding: '12px 10px', color: '#475569' }}>{patient.diagnosis_summary || 'Sin diagnóstico'}</td> : null}
                   <td style={{ padding: '12px 10px' }}>
                     <span style={{ background: statusLabel(patient.status).bg, color: statusLabel(patient.status).color, padding: '6px 12px', borderRadius: 999, fontSize: 13, fontWeight: 700 }}>
                       {statusLabel(patient.status).text}
                     </span>
                   </td>
                   <td style={{ padding: '12px 10px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <button type="button" className="secondary" onClick={() => onViewHistory(patient.id)}>
-                      👁️ Ver historial
-                    </button>
-                    <button type="button" className="secondary" onClick={() => onOpenVitals(patient)}>
-                      ❤️ Signos Vitales
-                    </button>
-                    <button type="button" className="secondary" onClick={() => onEdit(patient)}>
-                      ✏️ Editar
-                    </button>
-                    <button type="button" className="secondary" onClick={() => onDelete(patient)}>
-                      🗑️ Eliminar
-                    </button>
+                    {canClinical ? (
+                      <button type="button" className="secondary" onClick={() => onViewHistory(patient.id)}>
+                        👁️ Ver historial
+                      </button>
+                    ) : null}
+                    {canWrite && !showArchived ? (
+                      <>
+                        <button type="button" className="secondary" onClick={() => onOpenVitals(patient)}>
+                          ❤️ Signos Vitales
+                        </button>
+                        <button type="button" className="secondary" onClick={() => onEdit(patient)}>
+                          ✏️ Editar
+                        </button>
+                      </>
+                    ) : null}
+                    {canArchive && !showArchived ? (
+                      <button type="button" className="secondary" onClick={() => onArchive(patient)}>
+                        🗄️ Archivar
+                      </button>
+                    ) : null}
+                    {canArchive && showArchived ? (
+                      <button type="button" className="secondary" onClick={() => onRestore(patient)}>
+                        ↩️ Reactivar
+                      </button>
+                    ) : null}
                   </td>
                 </tr>
               ))}

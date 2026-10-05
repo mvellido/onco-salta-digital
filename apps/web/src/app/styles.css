@@ -552,3 +552,80 @@ button.ghost {
     padding-right: 0.85rem;
   }
 }
+
+/* Etapa 1: acceso por invitación, archivo de pacientes y administración */
+.auth-page {
+  max-width: 520px;
+  margin: 40px auto;
+  padding: 24px;
+  display: grid;
+  gap: 12px;
+}
+
+.archive-panel {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--warning);
+  border-radius: 12px;
+  background: var(--bg-muted);
+  display: grid;
+  gap: 10px;
+}
+
+.archive-panel p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.admin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.admin-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-surface);
+}
+
+.pill {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pill--muted {
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.perm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.perm-table th,
+.perm-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.perm-table code {
+  font-size: 12px;
+  color: var(--text-muted);
+}
