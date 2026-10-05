@@ -8,7 +8,7 @@ export async function listBillingRecords(supabase, patientIds) {
 
   let query = supabase
     .from('billing_records')
-    .select('id, patient_id, invoice_number, amount, currency, status, issued_at, paid_at, payer_name, notes, created_at');
+    .select('id, patient_id, invoice_number, amount, currency, status, issued_at, paid_at, payer_name, notes, created_at, payer_id, authorization_id, payment_reference');
   if (patientIds) {
     query = query.in('patient_id', patientIds);
   }
@@ -28,7 +28,7 @@ export async function createBillingRecord(supabase, payload) {
   const { data, error } = await supabase
     .from('billing_records')
     .insert([payload])
-    .select('id, patient_id, invoice_number, amount, currency, status, issued_at, paid_at, payer_name, notes, created_at')
+    .select('id, patient_id, invoice_number, amount, currency, status, issued_at, paid_at, payer_name, notes, created_at, payer_id, authorization_id, payment_reference')
     .single();
 
   if (error) {

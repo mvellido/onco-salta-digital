@@ -21,6 +21,38 @@ import {
 const ajv = new Ajv({ allErrors: true, removeAdditional: false });
 
 const validators = {
+  statementImport: ajv.compile({
+    type: 'object',
+    required: ['source_name', 'csv_text'],
+    additionalProperties: false,
+    properties: {
+      source_name: { type: 'string', minLength: 2, maxLength: 120 },
+      payer_id: { type: ['string', 'null'] },
+      file_name: { type: ['string', 'null'], maxLength: 200 },
+      csv_text: { type: 'string', minLength: 10 },
+    },
+  }),
+  statementConfirm: ajv.compile({
+    type: 'object',
+    required: ['matches'],
+    additionalProperties: false,
+    properties: {
+      matches: {
+        type: 'array',
+        minItems: 1,
+        maxItems: 500,
+        items: {
+          type: 'object',
+          required: ['line_id', 'record_id'],
+          additionalProperties: false,
+          properties: {
+            line_id: { type: 'string', minLength: 1 },
+            record_id: { type: 'string', minLength: 1 },
+          },
+        },
+      },
+    },
+  }),
   guidelineCreate: ajv.compile({
     type: 'object',
     required: ['title', 'fileName'],

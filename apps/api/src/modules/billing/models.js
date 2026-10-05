@@ -10,6 +10,9 @@ export function normalizeBillingRecord(record = {}) {
     paid_at: record.paid_at || null,
     payer_name: record.payer_name || null,
     notes: record.notes || null,
+    payer_id: record.payer_id || null,
+    authorization_id: record.authorization_id || null,
+    payment_reference: record.payment_reference || null,
   };
 }
 

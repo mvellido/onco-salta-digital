@@ -35,7 +35,7 @@ class Query {
     let result;
 
     if (this.op === 'insert') {
-      result = this.payload.map((row) => ({ id: `${this.table}-${rows.length + 1}`, ...row }));
+      result = this.payload.map((row, i) => ({ id: `${this.table}-${rows.length + i + 1}`, ...row }));
       rows.push(...result);
     } else if (this.op === 'update') {
       result = rows.filter(match);

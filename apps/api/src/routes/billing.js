@@ -49,6 +49,8 @@ export default async function billingRoutes(app, { supabase, authenticate, audit
         issued_at: payload.issued_at || new Date().toISOString(),
         paid_at: payload.paid_at || null,
         payer_name: payload.payer_name || null,
+        payer_id: payload.payer_id || null,
+        authorization_id: payload.authorization_id || null,
         notes: payload.notes || null,
         created_by: ctx.userId,
       });

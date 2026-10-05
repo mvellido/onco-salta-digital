@@ -4,6 +4,7 @@ import { createFakeSupabase } from './fakeSupabase.js';
 const DEFAULT_PERMISSIONS = {
   admin: ['patients:read', 'patients:read_basic', 'patients:write', 'patients:archive', 'users:manage', 'guidelines:manage', 'ai:use', 'scope:all_patients'],
   doctor: ['patients:read', 'patients:read_basic', 'patients:write', 'patients:archive', 'appointments:read', 'appointments:write', 'ai:use'],
+  finance: ['patients:read_basic', 'billing:read', 'billing:write', 'coverage:manage', 'scope:all_patients'],
   secretary: ['patients:read_basic', 'appointments:read', 'appointments:write', 'coverage:manage', 'scope:all_patients'],
 };
 
@@ -14,6 +15,7 @@ export function setup({ gemini = null, files = {}, rpc = {}, extraTables = {} } 
       'tok-doc': { id: 'u-doc', email: 'doc@onco.test' },
       'tok-doc2': { id: 'u-doc2', email: 'doc2@onco.test' },
       'tok-sec': { id: 'u-sec', email: 'sec@onco.test' },
+      'tok-fin': { id: 'u-fin', email: 'fin@onco.test' },
       'tok-nobody': { id: 'u-nobody', email: 'nobody@onco.test' },
     },
     tables: {
@@ -22,6 +24,7 @@ export function setup({ gemini = null, files = {}, rpc = {}, extraTables = {} } 
         { id: 'u-doc', email: 'doc@onco.test', role: 'doctor', active: true },
         { id: 'u-doc2', email: 'doc2@onco.test', role: 'doctor', active: true },
         { id: 'u-sec', email: 'sec@onco.test', role: 'secretary', active: true },
+        { id: 'u-fin', email: 'fin@onco.test', role: 'finance', active: true },
         { id: 'u-nobody', email: 'nobody@onco.test', role: null, active: false },
       ],
       role_permissions: Object.entries(DEFAULT_PERMISSIONS).flatMap(([role, perms]) =>

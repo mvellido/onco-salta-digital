@@ -11,6 +11,7 @@ import adminRoutes from './routes/admin.js';
 import clinicalRoutes from './routes/clinical.js';
 import guidelinesRoutes from './routes/guidelines.js';
 import coverageRoutes from './routes/coverage.js';
+import statementsRoutes from './routes/statements.js';
 
 // Arma la API sin abrir el puerto, para poder probarla con app.inject().
 export function buildApp({
@@ -57,6 +58,7 @@ export function buildApp({
   app.register(clinicalRoutes, deps);
   app.register(guidelinesRoutes, deps);
   app.register(coverageRoutes, deps);
+  app.register(statementsRoutes, deps);
 
   return app;
 }
