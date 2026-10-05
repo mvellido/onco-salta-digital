@@ -22,7 +22,7 @@ Cuando el sistema esté listo para usarse, se pasa a un proyecto dedicado siguie
 3. **Cerrar el registro público.** En *Authentication → Sign In / Providers*, desactivá *Allow new users to sign up*. Las invitaciones siguen funcionando con el registro cerrado.
 4. **Configurar las URLs.** En *Authentication → URL Configuration*:
    - *Site URL*: la URL del frontend, por ejemplo `https://onco-salta.vercel.app`.
-   - *Redirect URLs*: agregá `https://onco-salta.vercel.app/bienvenida` y, para desarrollo, `http://localhost:5173/bienvenida`.
+   - *Redirect URLs*: agregá `https://onco-salta.vercel.app/bienvenida` y, para desarrollo, `http://localhost:3000/bienvenida`.
 5. **Crear el primer administrador.** El sistema solo da rol a quien tiene una invitación, así que el primer admin se invita a mano:
    ```sql
    insert into public.invitations (email, role, full_name)

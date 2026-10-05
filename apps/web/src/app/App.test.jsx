@@ -113,7 +113,7 @@ describe('App authentication flow', () => {
       expect(mockSignInWithPassword).toHaveBeenCalledWith({ email: 'doc@example.com', password: 'secret123' });
     });
 
-    expect(await screen.findByText(/plataforma clínica onco-salta digital v1\.0/i)).toBeInTheDocument();
+    expect(await screen.findByText(/plataforma clínica oncológica/i)).toBeInTheDocument();
   });
 });
 
@@ -130,8 +130,8 @@ describe('Dashboard by role', () => {
     signedInAs(PROFILES.doctor);
     render(<App />);
 
-    expect(await screen.findByRole('button', { name: /sección de asistencia ia/i })).toBeInTheDocument();
-    expect(screen.getByText(/registrar paciente/i)).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /sección de asistencia ia/i })).toBeInTheDocument();
+    expect(await screen.findByText(/registrar paciente/i)).toBeInTheDocument();
     expect(screen.getByText('Médico/a')).toBeInTheDocument();
   });
 
@@ -139,9 +139,10 @@ describe('Dashboard by role', () => {
     signedInAs(PROFILES.secretary);
     render(<App />);
 
-    expect(await screen.findByRole('button', { name: /sección de secretaría y turnos/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /sección de asistencia ia/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /sección financiera/i })).not.toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /sección de secretaría y turnos/i })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /sección de asistencia ia/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /sección financiera/i })).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /pacientes/i })).toBeInTheDocument();
     expect(screen.queryByText(/registrar paciente/i)).not.toBeInTheDocument();
   });
 

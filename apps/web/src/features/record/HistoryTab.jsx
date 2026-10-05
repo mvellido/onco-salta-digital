@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { supabase } from './supabaseClient';
-import { API_URL } from '../config';
+import { supabase } from '../../app/supabaseClient';
 
 const STORAGE_BUCKET = 'medical-history';
 
@@ -61,14 +59,13 @@ function getFriendlyErrorMessage(error, fallback, resourceName) {
   return isStorageError ? getStorageErrorMessage(error) : message || fallback;
 }
 
-function PatientDetail({ user, initialPatient = null, initialEvents = null }) {
-  const { patientId } = useParams();
-  const navigate = useNavigate();
-  const [patient, setPatient] = useState(initialPatient);
+// Historia clínica del paciente: eventos con adjuntos. Lee y escribe directo en
+// Supabase con la sesión del usuario (RLS: treatment_history / event_attachments).
+function HistoryTab({ patientId, user, canWrite = true, initialEvents = null, onEventsChange }) {
   const [events, setEvents] = useState(initialEvents || []);
   const [attachmentsByEvent, setAttachmentsByEvent] = useState({});
   const [thumbnailUrls, setThumbnailUrls] = useState({});
-  const [loading, setLoading] = useState(!initialPatient);
+  const [loading, setLoading] = useState(!initialEvents);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [filterType, setFilterType] = useState('');
@@ -113,18 +110,6 @@ function PatientDetail({ user, initialPatient = null, initialEvents = null }) {
     setLoading(true);
 
     try {
-      const { data: patientData, error: patientError } = await supabase
-        .from('patients')
-        .select('*')
-        .eq('id', patientId)
-        .maybeSingle();
-
-      if (patientError) {
-        setMessage({ type: 'error', text: patientError.message || 'No se pudo cargar el paciente.' });
-        setLoading(false);
-        return;
-      }
-
       const { data: eventData, error: eventsError } = await supabase
         .from('treatment_history')
         .select('*')
@@ -141,7 +126,6 @@ function PatientDetail({ user, initialPatient = null, initialEvents = null }) {
         });
       }
 
-      setPatient(patientData);
       setEvents(eventData || []);
 
       const attachments = {};
@@ -182,9 +166,7 @@ function PatientDetail({ user, initialPatient = null, initialEvents = null }) {
   }, [patientId, loadAttachmentThumbnails]);
 
   useEffect(() => {
-    if (initialPatient && initialEvents) {
-      setPatient(initialPatient);
-      setEvents(initialEvents);
+    if (initialEvents) {
       setLoading(false);
       return;
     }
@@ -193,6 +175,10 @@ function PatientDetail({ user, initialPatient = null, initialEvents = null }) {
       loadPatientAndEvents();
     }
   }, [patientId, loadPatientAndEvents]);
+
+  useEffect(() => {
+    onEventsChange?.(events);
+  }, [events, onEventsChange]);
 
   const eventTypes = useMemo(
     () => ['Diagnóstico', 'Quimioterapia', 'Radioterapia', 'Cirugía', 'Consulta de seguimiento', 'Otro'],
@@ -440,42 +426,12 @@ function PatientDetail({ user, initialPatient = null, initialEvents = null }) {
 
   return (
     <div className="patient-detail">
-      <div className="detail-header">
-        <div>
-          <h1>Historial clínico</h1>
-          <p>{patient?.full_name || 'Paciente'}</p>
-        </div>
-        <button type="button" onClick={() => navigate('/')} className="secondary" style={{ whiteSpace: 'nowrap' }}>
-          Volver a pacientes
-        </button>
-      </div>
-
       <div className="detail-grid">
-        <section className="detail-card">
-          <h2>Datos generales</h2>
-          <div className="detail-row">
-            <strong>{patient?.full_name || '—'}</strong>
-            <span>Nombre completo</span>
-          </div>
-          <div className="detail-row">
-            <strong>{patient?.dni || 'Sin registro'}</strong>
-            <span>Documento</span>
-          </div>
-          <div className="detail-row">
-            <strong>{patient?.status || '—'}</strong>
-            <span>Estado clínico</span>
-          </div>
-          <div className="detail-row">
-            <strong>{patient?.diagnosis_summary || 'Sin diagnóstico'}</strong>
-            <span>Diagnóstico</span>
-          </div>
-        </section>
-
         <section className="timeline-card">
           <div className="timeline-toolbar">
             <div>
-              <h2 style={{ margin: 0 }}>Línea de tiempo</h2>
-              <p style={{ margin: '0.5rem 0 0', color: 'var(--text-muted)' }}>Registros clínicos y adjuntos del paciente.</p>
+              <h2 style={{ margin: 0 }}>Historial clínico</h2>
+              <p style={{ margin: '0.25rem 0 0', color: 'var(--text-muted)' }}>Eventos y adjuntos del paciente.</p>
             </div>
             <div className="timeline-filters">
               <label>
@@ -548,7 +504,7 @@ function PatientDetail({ user, initialPatient = null, initialEvents = null }) {
                             {thumbnailUrls[attachment.id] ? (
                               <img src={thumbnailUrls[attachment.id]} alt={attachment.file_name} className="attachment-thumb" />
                             ) : (
-                              <div style={{ width: 56, height: 56, borderRadius: 12, background: '#eef2ff' }} />
+                              <div className="attachment-thumb" aria-hidden="true" />
                             )}
                             <div className="attachment-meta">
                               <span className="attachment-name">{attachment.file_name}</span>
@@ -563,9 +519,11 @@ function PatientDetail({ user, initialPatient = null, initialEvents = null }) {
                                   Ver
                                 </button>
                               ) : null}
-                              <button type="button" onClick={() => handleDeleteAttachment(event.id, attachment)} className="ghost">
-                                Eliminar
-                              </button>
+                              {canWrite ? (
+                                <button type="button" onClick={() => handleDeleteAttachment(event.id, attachment)} className="ghost">
+                                  Eliminar
+                                </button>
+                              ) : null}
                             </div>
                           </li>
                         ))}
@@ -573,22 +531,25 @@ function PatientDetail({ user, initialPatient = null, initialEvents = null }) {
                     </div>
                   ) : null}
 
-                  <div className="event-card__actions">
-                    <button type="button" onClick={() => handleEdit(event)} className="secondary">
-                      Editar
-                    </button>
-                  </div>
+                  {canWrite ? (
+                    <div className="event-card__actions">
+                      <button type="button" onClick={() => handleEdit(event)} className="secondary">
+                        Editar
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>
           )}
         </section>
 
+        {canWrite ? (
         <section className="detail-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <h2 style={{ margin: 0 }}>{editingEventId ? 'Editar evento' : 'Agregar evento'}</h2>
             {editingEventId ? (
-              <button type="button" onClick={resetForm} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}>
+              <button type="button" className="secondary" onClick={resetForm}>
                 Cancelar edición
               </button>
             ) : null}
@@ -597,12 +558,12 @@ function PatientDetail({ user, initialPatient = null, initialEvents = null }) {
           <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 12, marginTop: 8 }}>
             <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
               Fecha del evento
-              <input type="date" value={formData.event_date} onChange={(e) => setFormData({ ...formData, event_date: e.target.value })} style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10 }} />
+              <input type="date" value={formData.event_date} onChange={(e) => setFormData({ ...formData, event_date: e.target.value })} />
             </label>
 
             <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
               Tipo de evento
-              <select value={formData.event_type} onChange={(e) => setFormData({ ...formData, event_type: e.target.value })} style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10 }}>
+              <select value={formData.event_type} onChange={(e) => setFormData({ ...formData, event_type: e.target.value })}>
                 {eventTypes.map((type) => (
                   <option key={type} value={type}>{type}</option>
                 ))}
@@ -611,12 +572,12 @@ function PatientDetail({ user, initialPatient = null, initialEvents = null }) {
 
             <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
               Descripción detallada
-              <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={4} style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10 }} />
+              <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={4} />
             </label>
 
             <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
               Resultado o nota del médico
-              <textarea value={formData.outcome_note} onChange={(e) => setFormData({ ...formData, outcome_note: e.target.value })} rows={3} style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10 }} />
+              <textarea value={formData.outcome_note} onChange={(e) => setFormData({ ...formData, outcome_note: e.target.value })} rows={3} />
             </label>
 
             <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
@@ -624,14 +585,15 @@ function PatientDetail({ user, initialPatient = null, initialEvents = null }) {
               <input type="file" multiple onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))} style={{ padding: '8px 0' }} />
             </label>
 
-            <button type="submit" disabled={saving} style={{ padding: '10px 14px', borderRadius: 10, border: 'none', background: saving ? '#94a3b8' : '#2563eb', color: '#fff', cursor: saving ? 'wait' : 'pointer', fontWeight: 700 }}>
+            <button type="submit" disabled={saving}>
               {saving ? 'Guardando...' : editingEventId ? 'Guardar cambios' : 'Agregar evento'}
             </button>
           </form>
         </section>
+        ) : null}
       </div>
     </div>
   );
 }
 
-export default PatientDetail;
+export default HistoryTab;

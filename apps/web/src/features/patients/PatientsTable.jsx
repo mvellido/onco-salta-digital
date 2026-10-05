@@ -1,11 +1,10 @@
-const statusLabel = (status) => {
-  const labels = {
-    active: { text: 'Activo', color: '#16a34a', bg: '#dcfce7' },
-    follow_up: { text: 'Seguimiento', color: '#d97706', bg: '#fef3c7' },
-    discharged: { text: 'Alta', color: '#2563eb', bg: '#dbeafe' },
-    deceased: { text: 'Fallecido', color: '#dc2626', bg: '#fee2e2' },
-  };
-  return labels[status] || { text: status || 'Desconocido', color: '#6b7280', bg: '#f3f4f6' };
+import { Archive, FolderOpen, RotateCcw, Search } from 'lucide-react';
+
+export const STATUS_LABELS = {
+  active: 'Activo',
+  follow_up: 'Seguimiento',
+  discharged: 'Alta',
+  deceased: 'Fallecido',
 };
 
 export default function PatientsTable({
@@ -17,24 +16,21 @@ export default function PatientsTable({
   setStatusFilter,
   message,
   onReload,
-  onViewHistory,
-  onOpenVitals,
-  onEdit,
+  onOpenRecord,
   onArchive,
   onRestore,
   canClinical,
-  canWrite,
   canArchive,
   showArchived,
   setShowArchived,
 }) {
   return (
-    <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+    <div style={{ display: 'grid', gap: 14 }}>
+      <div className="toolbar">
         <div>
-          <h2 style={{ margin: 0 }}>{showArchived ? 'Pacientes archivados' : 'Pacientes registrados'}</h2>
-          <p style={{ margin: '6px 0 0', color: 'var(--text-muted)' }}>
-            {showArchived ? 'Su historia clínica se conserva. Podés reactivarlos.' : 'Búsqueda, filtros y acciones rápidas.'}
+          <h2>{showArchived ? 'Pacientes archivados' : 'Pacientes'}</h2>
+          <p style={{ color: 'var(--muted)' }}>
+            {showArchived ? 'Su historia clínica se conserva. Podés reactivarlos.' : `${patients.length} en seguimiento`}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -43,86 +39,85 @@ export default function PatientsTable({
               {showArchived ? 'Ver activos' : 'Ver archivados'}
             </button>
           ) : null}
-          <button type="button" className="secondary" onClick={onReload}>Recargar lista</button>
+          <button type="button" className="secondary" onClick={onReload}>Recargar</button>
         </div>
       </div>
 
-      <div className="form-grid" style={{ alignItems: 'end' }}>
-        <input
-          type="text"
-          placeholder="Buscar por nombre o DNI..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+      <div className="form-grid" style={{ gridTemplateColumns: 'minmax(0, 2fr) minmax(160px, 1fr)' }}>
+        <label className="visually-hidden" htmlFor="patient-search">Buscar paciente</label>
+        <div style={{ position: 'relative' }}>
+          <Search size={16} aria-hidden="true" style={{ position: 'absolute', left: 11, top: 12, color: 'var(--faint)' }} />
+          <input
+            id="patient-search"
+            type="search"
+            placeholder="Buscar por nombre o DNI  (Ctrl+K)"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ paddingLeft: 34 }}
+          />
+        </div>
+        <select aria-label="Filtrar por estado" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="todos">Todos los estados</option>
-          <option value="active">Activo</option>
-          <option value="follow_up">Seguimiento</option>
-          <option value="discharged">Alta</option>
-          <option value="deceased">Fallecido</option>
+          {Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
       </div>
 
       {message.text ? (
-        <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 12, border: message.type === 'success' ? '1px solid #86efac' : '1px solid #fda4af', background: message.type === 'success' ? '#f0fdf4' : '#fef2f2', color: message.type === 'success' ? '#166534' : '#b91c1c' }}>
+        <div className={`message message--${message.type === 'success' ? 'success' : 'error'}`} role={message.type === 'success' ? 'status' : 'alert'}>
           {message.text}
         </div>
       ) : null}
 
       {patients.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>{showArchived ? 'No hay pacientes archivados.' : 'No hay pacientes cargados todavía.'}</p>
+        <div className="empty-state">
+          {showArchived ? 'No hay pacientes archivados.' : 'Todavía no hay pacientes. Cargá el primero con el formulario.'}
+        </div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 15 }}>
+        <div className="table-wrap">
+          <table className="data-table">
             <thead>
-              <tr style={{ background: '#f8fafc', color: '#334155', textAlign: 'left' }}>
-                <th style={{ padding: '12px 10px', borderBottom: '1px solid #e2e8f0' }}>Paciente</th>
-                {canClinical ? <th style={{ padding: '12px 10px', borderBottom: '1px solid #e2e8f0' }}>Diagnóstico</th> : null}
-                <th style={{ padding: '12px 10px', borderBottom: '1px solid #e2e8f0' }}>Estado</th>
-                <th style={{ padding: '12px 10px', borderBottom: '1px solid #e2e8f0' }}>Acciones</th>
+              <tr>
+                <th>Paciente</th>
+                {canClinical ? <th>Diagnóstico</th> : null}
+                <th>Estado</th>
+                <th><span className="visually-hidden">Acciones</span></th>
               </tr>
             </thead>
             <tbody>
-              {filteredPatients.map((patient, index) => (
-                <tr key={patient.id} style={{ background: index % 2 === 0 ? '#f8fafc' : '#ffffff' }}>
-                  <td style={{ padding: '12px 10px' }}>
-                    <strong>{patient.full_name}</strong>
-                    <div style={{ color: 'var(--text-muted)', marginTop: 4, fontSize: 13 }}>
-                      {[patient.dni && `DNI: ${patient.dni}`, patient.contact && `Contacto: ${patient.contact}`].filter(Boolean).join(' · ')}
+              {filteredPatients.map((patient) => (
+                <tr key={patient.id}>
+                  <td>
+                    {canClinical ? (
+                      <button type="button" className="secondary" style={{ border: 0, padding: 0, background: 'none', fontWeight: 700 }} onClick={() => onOpenRecord(patient.id)}>
+                        {patient.full_name}
+                      </button>
+                    ) : <strong>{patient.full_name}</strong>}
+                    <div className="mono" style={{ color: 'var(--muted)' }}>
+                      {[patient.dni && `DNI ${patient.dni}`, patient.contact].filter(Boolean).join(' · ')}
                     </div>
                   </td>
-                  {canClinical ? <td style={{ padding: '12px 10px', color: '#475569' }}>{patient.diagnosis_summary || 'Sin diagnóstico'}</td> : null}
-                  <td style={{ padding: '12px 10px' }}>
-                    <span style={{ background: statusLabel(patient.status).bg, color: statusLabel(patient.status).color, padding: '6px 12px', borderRadius: 999, fontSize: 13, fontWeight: 700 }}>
-                      {statusLabel(patient.status).text}
-                    </span>
+                  {canClinical ? <td style={{ color: 'var(--muted)' }}>{patient.diagnosis_summary || '—'}</td> : null}
+                  <td>
+                    <span className={`status-pill status-pill--${patient.status}`}>{STATUS_LABELS[patient.status] || patient.status}</span>
                   </td>
-                  <td style={{ padding: '12px 10px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {canClinical ? (
-                      <button type="button" className="secondary" onClick={() => onViewHistory(patient.id)}>
-                        👁️ Ver historial
-                      </button>
-                    ) : null}
-                    {canWrite && !showArchived ? (
-                      <>
-                        <button type="button" className="secondary" onClick={() => onOpenVitals(patient)}>
-                          ❤️ Signos Vitales
+                  <td>
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                      {canClinical && !showArchived ? (
+                        <button type="button" className="secondary icon-button" onClick={() => onOpenRecord(patient.id)}>
+                          <FolderOpen size={15} aria-hidden="true" /> Ficha
                         </button>
-                        <button type="button" className="secondary" onClick={() => onEdit(patient)}>
-                          ✏️ Editar
+                      ) : null}
+                      {canArchive && !showArchived ? (
+                        <button type="button" className="secondary icon-button" onClick={() => onArchive(patient)}>
+                          <Archive size={15} aria-hidden="true" /> Archivar
                         </button>
-                      </>
-                    ) : null}
-                    {canArchive && !showArchived ? (
-                      <button type="button" className="secondary" onClick={() => onArchive(patient)}>
-                        🗄️ Archivar
-                      </button>
-                    ) : null}
-                    {canArchive && showArchived ? (
-                      <button type="button" className="secondary" onClick={() => onRestore(patient)}>
-                        ↩️ Reactivar
-                      </button>
-                    ) : null}
+                      ) : null}
+                      {canArchive && showArchived ? (
+                        <button type="button" className="secondary icon-button" onClick={() => onRestore(patient)}>
+                          <RotateCcw size={15} aria-hidden="true" /> Reactivar
+                        </button>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -130,6 +125,6 @@ export default function PatientsTable({
           </table>
         </div>
       )}
-    </>
+    </div>
   );
 }

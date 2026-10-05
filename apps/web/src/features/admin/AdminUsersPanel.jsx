@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiJson } from '../../lib/api';
+import { ROLE_LABELS } from '../../app/MeContext';
 
-export const ROLE_LABELS = {
-  admin: 'Administración',
-  doctor: 'Médico/a',
-  secretary: 'Secretaría',
-  finance: 'Finanzas',
-};
 
 const PERMISSION_LABELS = {
   'patients:read': 'Ver ficha clínica',

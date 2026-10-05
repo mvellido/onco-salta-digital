@@ -239,7 +239,7 @@ npm run dev
 cd apps/web
 npm install
 npm run dev
-# Abre http://localhost:5173 automáticamente
+# Abre http://localhost:3000 automáticamente
 ```
 
 ---
@@ -382,7 +382,7 @@ Para que la autenticación funcione en producción, debes agregar estas URLs en 
 ### Redirect URLs
 - `https://tu-frontend.vercel.app/`
 - `https://tu-frontend.vercel.app/**`
-- `http://localhost:5173/`
+- `http://localhost:3000/`
 
 Si usas rutas internas como `/patients/:id`, añade también:
 - `https://tu-frontend.vercel.app/patients/*`
