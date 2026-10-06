@@ -4,8 +4,9 @@ const DOCUMENT_TYPES = ['patologia', 'imagenes', 'laboratorio', 'epicrisis', 'ot
 const CONFIDENCE = ['alta', 'media', 'baja'];
 
 const str = (value, max = 200) => (typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : null);
+// Acepta "cT2a", "pN1", "ypT0": el prefijo se descarta (la ficha lo guarda aparte).
 const tnm = (value, letter) => {
-  const text = str(value, 10);
+  const text = str(value, 10)?.replace(/^(yc|yp|c|p|r)(?=[TNM])/i, '');
   return text && text.toUpperCase().startsWith(letter) ? text.charAt(0).toUpperCase() + text.slice(1) : null;
 };
 
