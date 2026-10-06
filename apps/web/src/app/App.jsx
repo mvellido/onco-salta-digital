@@ -56,9 +56,8 @@ function AuthPage({ onSignIn }) {
 
   return (
     <div className="auth-page">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <Logo size={48} />
-        <h1>ONCO-SALTA <span style={{ color: 'var(--accent)' }}>DIGITAL</span></h1>
+      <div style={{ display: 'grid', justifyItems: 'center', gap: 8 }}>
+        <Logo size={160} />
       </div>
       <p>Iniciá sesión para acceder a la plataforma clínica.</p>
 

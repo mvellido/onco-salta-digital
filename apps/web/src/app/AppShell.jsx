@@ -36,7 +36,7 @@ export default function AppShell() {
         <NavLink to="/" className="app-shell__brand" aria-label="Inicio">
           <Logo />
           <div className="app-shell__brand-title">
-            <strong>ONCO-SALTA <em>DIGITAL</em></strong>
+            <strong><span className="brand-blue">ONCOLOGÍA</span> <em>SALTA</em> <span className="brand-blue">DIGITAL</span></strong>
             <span>Plataforma clínica oncológica</span>
           </div>
         </NavLink>

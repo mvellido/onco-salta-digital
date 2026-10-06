@@ -261,8 +261,10 @@ label {
 
 .app-shell__brand-title strong em {
   font-style: normal;
-  color: var(--accent);
+  color: #7cb342;
 }
+
+.app-shell__brand-title .brand-blue { color: #1f7a9c; }
 
 .app-shell__brand-title span {
   font-size: 0.82rem;
